@@ -10,6 +10,18 @@
 require 'elements/containers/stack'
 require 'elements/containers/binary_tree'
 
+local utils = {}
+
+function utils.printStep(pc, op_name, operand, tos)
+    operand = operand or ""
+    print(string.format("%08x: %-9s %9s %9.2f", pc, op_name, operand, tos))
+end
+
+function utils.printHeader()
+    print(string.format("%-9s %-9s %9s %9s", "Address", "Operation", "Operand", "TOS"))
+    print("----------------------------------------")
+end
+
 
 Machine = {}
 Machine.__index = Machine
@@ -98,15 +110,6 @@ function Machine:load (memory)
     self.stack_ = Stack:new()
 end
 
-local function printStep(pc, op_name, operand, tos)
-    operand = operand or ""
-    print(string.format("%08x: %-9s %9s %9.2f", pc, op_name, operand, tos))
-end
-
-local function printHeader()
-    print(string.format("%-9s %-9s %9s %9s", "Address", "Operation", "Operand", "TOS"))
-    print("----------------------------------------")
-end
 -- Step the machine 1 instruction. I.e
 --
 -- 1. Read the opcode at pc
@@ -148,7 +151,7 @@ function Machine:step ()
     end
 
     if self.trace_ then
-        printStep(pc, op_name, operand, self:tos())
+        utils.printStep(pc, op_name, operand, self:tos())
     end
 end
 
@@ -167,7 +170,7 @@ end
 function Machine:run ()
     -- Trace: start
     if self.trace_ then
-        printHeader()
+        utils.printHeader()
     end
 
     while not self:isHalted() do
