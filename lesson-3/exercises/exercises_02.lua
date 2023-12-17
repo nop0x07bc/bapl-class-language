@@ -1,5 +1,5 @@
 --
--- Exercise 02: Rules for identifiers
+-- Exercise 02: Empty statement
 --
 
 --  
