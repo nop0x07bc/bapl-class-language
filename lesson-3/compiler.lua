@@ -166,6 +166,25 @@ local function processUnaryOp (lst)
 end
 
 
+local primary    = lpeg.V"primary"
+local exponent   = lpeg.V"exponent"
+local negation   = lpeg.V"negation"
+local term       = lpeg.V"term"
+local addend     = lpeg.V"addend"
+local expression = lpeg.V"expression"
+
+-- Expression grammar
+local grammar_expression = lpeg.P{
+    "expression",
+    primary    = numeral + variable + OP * expression * CP,
+    exponent   = space * lpeg.Ct((primary * opE)^0 * primary) / processOpR,
+    negation   = space * lpeg.Ct(opN^0 * exponent) / processUnaryOp,
+    term       = space * lpeg.Cf(negation * lpeg.Cg(opM * negation)^0, processOpL),
+    addend     = space * lpeg.Cf(term * lpeg.Cg(opA * term)^0, processOpL),
+    expression = space * lpeg.Cf(addend * lpeg.Cg(opC * addend)^0, processOpL), 
+}
+
+
 local function assignmentNode(identifier, expression)
     if expression then
         return Tree:new({tag = "assignment", identifier = identifier, expression = expression})
@@ -190,27 +209,6 @@ local function printNode(expression)
     return Tree:new({tag = "print", expression = expression})
 end
 
-
-
-
-local primary    = lpeg.V"primary"
-local exponent   = lpeg.V"exponent"
-local negation   = lpeg.V"negation"
-local term       = lpeg.V"term"
-local addend     = lpeg.V"addend"
-local expression = lpeg.V"expression"
-
--- Expression grammar
-local grammar_expression = lpeg.P{
-    "expression",
-    primary    = numeral + variable + OP * expression * CP,
-    exponent   = space * lpeg.Ct((primary * opE)^0 * primary) / processOpR,
-    negation   = space * lpeg.Ct(opN^0 * exponent) / processUnaryOp,
-    term       = space * lpeg.Cf(negation * lpeg.Cg(opM * negation)^0, processOpL),
-    addend     = space * lpeg.Cf(term * lpeg.Cg(opA * term)^0, processOpL),
-    expression = space * lpeg.Cf(addend * lpeg.Cg(opC * addend)^0, processOpL), 
-}
-
 local statement = lpeg.V"statement"
 local sequence  = lpeg.V"sequence"
 local block     = lpeg.V"block"
@@ -234,7 +232,34 @@ local function envAddRef(env, id, ref)
     env[id] = refinfo
 end
 
+
+local function constantFold (ast)
+    if ast:isLeaf() then
+        return ast
+    end
+    
+    local children = {}
+    for _, child in pairs(ast:children()) do
+        table.insert(children, constantFold(child))
+    end
+
+    local node = ast:node()
+    if node.tag == "binary_operator" and children[1]:node().tag == "number" and children[2]:node().tag == "number" then
+        op = Machine.OPCODES.BINOP_LOOKUP[node.value]
+        left = children[1]:node().value
+        right = children[2]:node().value
+        return Tree:new({tag = "number", value = op(left, right)})
+    elseif node.tag == "unary_operator" and children[1]:node().tag == "number" then
+        op = Machine.OPCODES.UNARYOP_LOOKUP[node.value]
+        operand = children[1]:node().value
+        return Tree:new({tag = "number", value = op(operand)})
+    else
+        return Tree:new(node, table.unpack(children))
+    end
+end
+
 local function codeGenExp(ast, env, code) 
+    local ast = constantFold(ast)
     for _, sub in pairs(ast:children()) do
         codeGenExp (sub, env, code)
     end
