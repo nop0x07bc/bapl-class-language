@@ -85,6 +85,11 @@ TestMachine = {}
             eval("m #{ #{ \n# #{ mass\n #} = 3.0; v #{ velocity\n # m/s \n #} = 2.4; W = m * v^2 / 2.0; return W;"),
             8.64)
 
+        -- Advanced comments
+        lu.assertEquals(
+            eval("{\nW = 8.64;\n#{ block } {} {comments nested in a block\n # W = 9.0;  #} }; return W;"),
+            8.64)
+
         -- Unmatched block comment is an error.
         status, data = pcall(compiler.compile, "x = 3; #{ Some unfinished commment\n y = x + 3; return y")
         lu.assertFalse(status)
