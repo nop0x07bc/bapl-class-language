@@ -198,13 +198,7 @@ local numeral_wo_e = (hex_integer
                       + integer)
 local numeral = ((numeral_wo_e * (lpeg.S("eE") * integer)^-1) / numberNode) * space
 
--- Identifiers and variables
-local function variableNode(variable)
-    return Tree:new({tag = "variable", identifier = variable})
-end
-
-
--- Reserved words and identifiers
+-- Reserved words, identifiers and variables
 local underscore = lpeg.P"_"
 local alpha = lpeg.R("AZ", "az")
 local alphanum = alpha + digit
@@ -240,6 +234,9 @@ end
 local ID_START = lpeg.P(identifierStart)
 local ID_END = lpeg.P(identifierEnd)
 
+local function variableNode(variable)
+    return Tree:new({tag = "variable", identifier = variable})
+end
 
 local identifier_prefix = alpha + underscore
 local identifier_postfix = alphanum + underscore
@@ -300,21 +297,31 @@ grammar = grammar * -1
 -- Compiler
 --
 
-local function envAddRef(env, id, ref)
-    local refinfo = env[id] or {at = {}}
-    table.insert(refinfo.at, ref)
-    env[id] = refinfo
+local Compiler = {}
+Compiler.__index = Compiler
+
+function Compiler:new ()
+    local compiler = {env_ = {}, code_ = {}}
+    setmetatable(compiler, Compiler)
+    return compiler
 end
 
 
-local function constantFold (ast)
+function Compiler:envAddRef(id, ref)
+    local refinfo = self.env_[id] or {at = {}}
+    table.insert(refinfo.at, ref)
+    self.env_[id] = refinfo
+end
+
+
+function Compiler:constantFold (ast)
     if ast:isLeaf() then
         return ast
     end
     
     local children = {}
     for _, child in pairs(ast:children()) do
-        table.insert(children, constantFold(child))
+        table.insert(children, self:constantFold(child))
     end
 
     local node = ast:node()
@@ -332,36 +339,36 @@ local function constantFold (ast)
     end
 end
 
-local function codeGenExp(ast, env, code) 
-    local ast = constantFold(ast)
+function Compiler:codeGenExp(ast) 
+    local ast = self:constantFold(ast)
     for _, sub in pairs(ast:children()) do
-        codeGenExp (sub, env, code)
+        self:codeGenExp(sub)
     end
     
     local node = ast:node()
 
     if node.tag == "number" then
-        table.insert(code, Machine.OPCODES.PUSH)
-        table.insert(code, node.value)
+        table.insert(self.code_, Machine.OPCODES.PUSH)
+        table.insert(self.code_, node.value)
     elseif node.tag == "binary_operator" then
-        table.insert(code, node.value)
+        table.insert(self.code_, node.value)
     elseif node.tag == "unary_operator" then
-        table.insert(code, node.value)
+        table.insert(self.code_, node.value)
     elseif node.tag == "variable" then
         -- check that the variable has been defined
-        assert(env[node.identifier] ~= nil, make_error(ERROR_CODES.UNDEFINED_VARIABLE, {identifier = node.identifier}))
+        assert(self.env_[node.identifier] ~= nil, make_error(ERROR_CODES.UNDEFINED_VARIABLE, {identifier = node.identifier}))
 
-        table.insert(code, Machine.OPCODES.LOAD)
+        table.insert(self.code_, Machine.OPCODES.LOAD)
         -- Insert a sentinel value. We will update this with an pointer to the storage 
         -- of the variable during the program generation phase.
-        table.insert(code, 0xdeadc0de)
-        envAddRef(env, node.identifier, #code) -- Add a reference to identifier location
+        table.insert(self.code_, 0xdeadc0de)
+        self:envAddRef(node.identifier, #self.code_) -- Add a reference to identifier location
     else
         error(make_error(ERROR_CODES.UNEXPECTED_TAG, {tag = node.tag}))
     end
 end
 
-local function codeGenSeq(ast, env, code)
+function Compiler:codeGenSeq(ast)
     node = ast:node()
     
     if node.tag == "assignment" then
@@ -369,38 +376,38 @@ local function codeGenSeq(ast, env, code)
         local expression = node.expression
         -- Generate code that evaluates the expression and puts the result
         -- on TOS.
-        codeGenExp(expression, env, code)
+        self:codeGenExp(expression)
         -- Insert store instruction (pops TOS and writes to code[code[pc + 1]])
-        table.insert(code, Machine.OPCODES.STORE)
+        table.insert(self.code_, Machine.OPCODES.STORE)
         -- Insert a sentinel value. We will update this with an pointer to the storage 
         -- of the variable during the program generation phase.
-        table.insert(code, 0xdeadc0de)
-        envAddRef(env, identifier, #code)
+        table.insert(self.code_, 0xdeadc0de)
+        self:envAddRef(identifier, #self.code_)
     elseif node.tag == "empty_statement" then
         -- just ignore empty statements.
     elseif node.tag == "sequence" then
         for _, sub in pairs(ast:children()) do
-            codeGenSeq(sub, env, code)
+            self:codeGenSeq(sub)
         end
     elseif node.tag == "return" then
         if node.expression ~= nil then
-            codeGenExp(node.expression, env, code)
+            self:codeGenExp(node.expression)
         end
-        table.insert(code, Machine.OPCODES.RETURN)
+        table.insert(self.code_, Machine.OPCODES.RETURN)
     elseif node.tag == "print" then
         if node.expression ~= nil then
-            codeGenExp(node.expression, env, code)
+            self:codeGenExp(node.expression)
         end
-        table.insert(code, Machine.OPCODES.PRINT)
+        table.insert(self.code_, Machine.OPCODES.PRINT)
     else
         error(make_error(ERROR_CODES.UNEXPECTED_TAG, {tag = node.tag}))
     end
 end
 
-local function genProgramImage (env, code)
+function Compiler:genProgramImage()
     -- Insert the 'HALT' instruction at the end of the code block. This will ensure
     -- that the machine halts and don't continue execution past this point.
-    table.insert(code, Machine.OPCODES.HALT)
+    table.insert(self.code_, Machine.OPCODES.HALT)
     
     -- The Machine always start executing at memory location 0. We store the program image
     -- as follows:
@@ -423,14 +430,14 @@ local function genProgramImage (env, code)
     table.insert(program_image, 0xdeadC0de)
 
     -- Create storage for variables and update the reference in the code.
-    for _, refinfo in pairs(env) do
+    for _, refinfo in pairs(self.env_) do
         -- Default all storage cells to 0
         table.insert(program_image, 0)
 
         -- Update the reference in the code block.
         refinfo.address = #program_image
         for _, loc in pairs(refinfo.at) do
-            code[loc] = refinfo.address
+            self.code_[loc] = refinfo.address
         end
     end
     
@@ -438,12 +445,12 @@ local function genProgramImage (env, code)
     program_image[2] = #program_image + 1
     
     -- Relocate the code block to the end of the variable storage.
-    table.move(code, 1, #code, #program_image + 1, program_image)
+    table.move(self.code_, 1, #self.code_, #program_image + 1, program_image)
 
     return program_image
 end
 
-local function syntaxErrorPayload(input, pos)
+function Compiler:syntaxErrorPayload(input, pos)
     local upto    = string.sub(input, 0, pos)
     local split   = lpeg.Ct((lpeg.C(notlb^0) * lb + lpeg.C(notlb^1))^0)
     local lines   = split:match(upto)
@@ -465,25 +472,27 @@ end
 --
 -- Parser takes input string and returns an AST.
 --
-function parse (input)
+function Compiler:parse (input)
     -- reset the max pos counter.
     max_pos_ = 0
     local ast = grammar:match(input)
-    assert(ast ~= nil, make_error(ERROR_CODES.SYNTAX, syntaxErrorPayload(input, max_pos_))) 
+    assert(ast ~= nil, make_error(ERROR_CODES.SYNTAX, self:syntaxErrorPayload(input, max_pos_))) 
     return ast
 end
 
+
+function Compiler:compile (input)
+    local ast = self:parse(input)
+    self:codeGenSeq(ast)
+    return self:genProgramImage()
+end
 
 --
 -- The compiler that translates the AST into machine instructions.
 --
 local function compile (str)
-    local ast = parse(str)
-    local code = {}
-    local env = {} -- Global environment
-    codeGenSeq(ast, env, code)
-    local image = genProgramImage(env, code)
-    return image
+    local compiler = Compiler:new()
+    return compiler:compile(str)
 end
 
 
