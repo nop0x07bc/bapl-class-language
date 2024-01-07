@@ -274,7 +274,7 @@ function Machine:step ()
         local tos_0 = self.stack_:pop() -- array
         local tos_1 = self.stack_:pop() -- index
         assert(type(tos_0) == "table", make_error(ERROR_CODES.TYPE_MISMATCH, {message = "Expected array"}))
-        assert(0 <= tos_1 and tos_1 <= tos_0.size - 1, make_error(ERROR_CODES.INDEX_OUT_OF_RANGE, {message = "Index out of range"}))
+        assert(1 <= tos_1 and tos_1 <= tos_0.size, make_error(ERROR_CODES.INDEX_OUT_OF_RANGE, {message = "Index out of range"}))
 
         self.stack_:push(tos_0[tos_1])
         self.pc_ = self.pc_ + 1
@@ -283,7 +283,7 @@ function Machine:step ()
         local tos_1 = self.stack_:pop() -- index
         local tos_2 = self.stack_:pop() -- value
         assert(type(tos_0) == "table", make_error(ERROR_CODES.TYPE_MISMATCH, {message = "Expected array"}))
-        assert(0 <= tos_1 and tos_1 <= tos_0.size - 1, make_error(ERROR_CODES.INDEX_OUT_OF_RANGE, {message = "Index out of range"}))
+        assert(1 <= tos_1 and tos_1 <= tos_0.size, make_error(ERROR_CODES.INDEX_OUT_OF_RANGE, {message = "Index out of range"}))
 
         tos_0[tos_1] = tos_2
 

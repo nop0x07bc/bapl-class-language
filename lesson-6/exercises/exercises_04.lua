@@ -33,22 +33,14 @@ TestMachine = {}
         local status = true
         local data = {}
 
-        -- Array operations.
-        lu.assertEquals(eval("x = new [10]; return x;"), {size=10}) 
-        lu.assertEquals(eval("x = new [10]; x[1] = 10; x[2] = -10; return x[1];"), 10) 
-        lu.assertEquals(eval("x = new [2 * 2 + 1]; i = 1; x[2*i + 2] = -10; return x[4];"), -10) 
-        lu.assertEquals(eval("x = new[2]; x[1] = 3; x[2] = 4; y = x[1]^2 + x[2]^2; return y;"), 25) 
 
-        status, data = pcall(eval, "x = new [10]; x[12] = 5")
-        lu.assertFalse(status)
-        lu.assertEquals(data.code, errors.ERROR_CODES.INDEX_OUT_OF_RANGE)
-        
-        status, data = pcall(eval, "x = new [10]; x[-1] = 5")
-        lu.assertFalse(status)
-        lu.assertEquals(data.code, errors.ERROR_CODES.INDEX_OUT_OF_RANGE)
-
+        -- Test array print.
+        lu.assertEquals(eval_print("x = new [3]; @ x"), {"{,,}\n"})
+        lu.assertEquals(eval_print("x = new [3]; x[2] = 2; @ x"), {"{,2,}\n"})
+        lu.assertEquals(eval_print("x = new [3]; x[1] = 3; x[2] = 2; @ x"), {"{3,2,}\n"})
+        lu.assertEquals(eval_print("x = new [3]; x[1] = 3; x[2] = 2; x[3] = 1; @ x"), {"{3,2,1}\n"})
+        lu.assertEquals(eval_print("x = new [3]; x[1] = new [3]; x[2] = 0; x[3] = 0; @ x"), {"{{,,},0,0}\n"})
 
     end
-
 os.exit(lu.LuaUnit:run())
 

@@ -15,7 +15,7 @@ TestMachine = {}
         machine:setTrace(false)
 
         -- GC measurment
-        program = compiler.compile("n = 0; x = new [1000000]; while n < 1000000 { x[n] = n * 2;  n = n + 1}; return x[500000];")
+        program = compiler.compile("n = 1; x = new [1000000]; while n <= 1000000 { x[n] = n * 2;  n = n + 1}; return x[500000];")
         machine:load(program)
 
         collectgarbage("collect")
@@ -30,7 +30,7 @@ TestMachine = {}
         lu.assertNotAlmostEquals(gc_size_before/gc_size_after, 1, 0.9)
 
 
-        program = compiler.compile("n = 0; x = new [1000000]; while n < 1000000 { x[n] = n * 2;  n = n + 1}; x = 10; return x;")
+        program = compiler.compile("n = 1; x = new [1000000]; while n <= 1000000 { x[n] = n * 2;  n = n + 1}; x = 10; return x;")
         machine:load(program)
 
         collectgarbage("collect")

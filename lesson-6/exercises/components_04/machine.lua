@@ -157,6 +157,23 @@ function utils.printHeader()
 end
 
 
+function utils.printArray(array)
+    local parts = {}
+    for i = 1,array.size do
+        local e = array[i]
+        if type(e) == "nil" then
+            table.insert(parts, "")
+        elseif type(e) == "number" then
+            table.insert(parts, tostring(e))
+        elseif type(e) == "table" then
+            table.insert(parts, utils.printArray(e))
+        else
+            table.insert(parts, e)
+        end
+    end
+    return "{" .. table.concat(parts, ",") .. "}"
+end
+
 -- Create a 'Machine' and load the program in 'memory'.
 function Machine:new (ios)
     local ios = ios or io.stdout
@@ -289,7 +306,17 @@ function Machine:step ()
 
         self.pc_ = self.pc_ + 1
     elseif op_variant == Machine.OPCODES.PRINT then
-        self.io_:write(self.stack_:peek() .. "\n")
+        local tos_0 = self.stack_:peek()
+        local out   = ""
+        if type(tos_0) == "number" then
+            out = tostring(tos_0)
+        elseif type(tos_0) == "table" then
+            out = utils.printArray(tos_0)
+        else
+            out = tos_0
+        end
+        
+        self.io_:write(out .. "\n")
         self.pc_ = self.pc_ + 1
     elseif binop_fn ~= nil then
         local tos_0 = self.stack_:pop()
