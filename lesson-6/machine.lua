@@ -56,7 +56,7 @@ Machine.OPCODES.GETARR    = 0xB1 -- Pop 2 elements TOS(0), TOS(1) from the stack
 Machine.OPCODES.SETARR    = 0xB2 -- Pop 3 elements TOS(0), TOS(1), TOS(2) from the stack, set array (TOS(2)) at index (TOS(1)) to TOS(0).
 Machine.OPCODES.SETARRP   = 0xB3 -- Pop 1 element TOS(0) from the stack, set array (TOS(2)) at index (TOS(1)) to TOS(0).
 Machine.OPCODES.HALT      = 0xF0 -- Halt the machine,
-Machine.OPCODES.PRINT     = 0xF1 -- Print TOS via io channel. Leaves stack unchanged.
+Machine.OPCODES.PRINT     = 0xF1 -- Pop TOS and Print TOS via io channel.
 function toBool (a)
     return (a ~= 0)
 end
@@ -339,7 +339,7 @@ function Machine:step ()
 
         self.pc_ = self.pc_ + 1
     elseif op_variant == Machine.OPCODES.PRINT then
-        local tos_0 = self.stack_:peek()
+        local tos_0 = self.stack_:pop()
         local out   = ""
         if type(tos_0) == "number" then
             out = tostring(tos_0)

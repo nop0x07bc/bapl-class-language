@@ -10,6 +10,7 @@ while w <= width
     h = 1;
     while h <= height
     {
+        # Note: cell is a reference to an array!
         cell = image[w][h];
         cell[1] = w;
         cell[2] = h;
@@ -22,3 +23,45 @@ while w <= width
 }
 
 @ image;
+
+n = 10;
+m = 7 * 7;
+while n > 0
+{
+    switch n*n
+    {
+        case 100:
+        {
+            @ -1;
+            # no fall through;
+            break;
+        }
+        case 81:
+        {
+            @ -2;
+            # fall through!
+        }
+        case 64:
+        {
+            @ -3;
+            break;
+        }
+        case m:
+        {
+            @ -4;
+            break;
+        }
+        default:
+        {
+            @ -5;
+        }
+    }
+    @ 0;
+    @ n;
+    if n < 3
+    {
+        break;
+    }
+    n = n - 1;
+}
+

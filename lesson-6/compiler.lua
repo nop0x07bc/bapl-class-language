@@ -216,6 +216,8 @@ local reserved = {
     ["return"] = true,
     ["and"]    = true,
     ["or"]     = true,
+    ["switch"] = true,
+    ["case"]   = true,
 }
 
 local function R(t)
@@ -266,6 +268,7 @@ local sequence   = lpeg.V"sequence"
 local block      = lpeg.V"block"
 local ifstmt     = lpeg.V"ifstmt"
 local ifrest     = lpeg.V"ifrest"
+local switchstmt = lpeg.V"switchstmt"
 -- Statement grammar
 local grammar = lpeg.P{
     "program",
@@ -289,9 +292,15 @@ local grammar = lpeg.P{
                   / node("if_", "condition", "ifblock", "elseblock"),
     ifrest      = (R("elseif") * expression * block * (ifrest + R("else") * block)^-1) 
                   / node("if_", "condition", "ifblock", "elseblock"),
+    switchstmt  = (R"switch" * expression
+                                    * T"{"
+                                        * ((R"case" * expression * T":" * block) / node("case_", "expression", "block"))^0
+                                        * ((R"default" * T":" * block) / node("default_", "block"))^-1
+                                    * T"}") / node("switch_", "expression"),
     block       = T"{" * sequence * T";"^-1 * T"}"
                 + (R("while") * expression * block) / node("while_", "condition", "whileblock")
-                + ifstmt,
+                + ifstmt
+                + switchstmt,
     statement   = block 
                 + (R("return") * expression) / node("return", "expression")
                 + (R("@") * expression) / node("print", "expression")
@@ -311,7 +320,7 @@ local Compiler = {}
 Compiler.__index = Compiler
 
 function Compiler:new ()
-    local compiler = {env_ = {}, code_ = {}, loop_ctx_ = Stack:new()}
+    local compiler = {env_ = {}, code_ = {}, break_ctx_ = Stack:new()}
     setmetatable(compiler, Compiler)
     return compiler
 end
@@ -470,6 +479,19 @@ function Compiler:codeGenAssignment(ast)
     end
 end
 
+function Compiler:enterBreakContext()
+    -- create a new break context
+    self.break_ctx_:push({})
+end
+
+function Compiler:exitBreakContext()
+    -- Generate jump instructions for break statement for a given context.
+    local ctx = self.break_ctx_:pop()
+    for _, address in pairs(ctx) do
+        self.code_[address] = self:branchRelative(OPCODES.B, self:nextCodeLoc() - address)
+    end
+end
+
 function Compiler:codeGenSeq(ast)
     local node = ast:node()
 
@@ -519,8 +541,8 @@ function Compiler:codeGenSeq(ast)
         local condition  = node.condition
         local whileblock = node.whileblock
         
-        -- Create a new "loop context" where we save addresses to jump instruction for "break" statements.
-        self.loop_ctx_:push({})
+        -- Create a new "break context" where we save addresses to jump instruction for "break" statements.
+        self:enterBreakContext()
         -- Save the location of the test condition code.
         local cond_location = #self.code_ + 1
         -- Generate the instructions for the condition.
@@ -537,17 +559,56 @@ function Compiler:codeGenSeq(ast)
         table.insert(self.code_, self:branchRelative(OPCODES.B, cond_location - self:nextCodeLoc()))
         -- insert conditional jump to end of whileblock.
         self.code_[bz_location] = self:branchRelative(OPCODES.BZ, self:nextCodeLoc() - bz_location)
-        local ctx = self.loop_ctx_:pop()
-        for _, address in pairs(ctx) do
-            self.code_[address] = self:branchRelative(OPCODES.B, self:nextCodeLoc() - address)
-        end
+        self:exitBreakContext()
     elseif node.tag == "break_" then
-        assert(#self.loop_ctx_ > 0, make_error(ERROR_CODES.NO_LOOP, {message = "Break without active Loop"}))
-        local ctx = self.loop_ctx_:peek()
+        assert(#self.break_ctx_ > 0, make_error(ERROR_CODES.NO_LOOP, {message = "Break without active Loop"}))
+        local ctx = self.break_ctx_:peek()
         -- Sentinel for jump instruction.
         table.insert(self.code_, 0xdeadc0de)
         -- Save address in current loop context, we will fill this address with a branch instruction.
         table.insert(ctx, #self.code_)
+    elseif node.tag == "switch_" then
+        local node = ast:node()
+        local block_jumps = {}
+        self:enterBreakContext()
+
+        if #ast:children() > 0 then
+            self:codeGenExp(node.expression) -- result of switch expression at TOS
+            
+            -- Iterate over all case expression and generate test / jump to block instructions.
+            -- Note: Keep switch test-expression result on the top of the stack between tests.
+            for _, sub in ipairs(ast:children()) do
+                local sub_node = sub:node()
+                if sub_node.tag == "case_" then
+                    table.insert(self.code_, OPCODES.make(OPCODES.DUP))
+                    self:codeGenExp(sub_node.expression)
+                    table.insert(self.code_, OPCODES.make(OPCODES.EQ))
+                elseif sub_node.tag == "default_" then
+                    -- No special code here
+                end
+                table.insert(self.code_, 0xdeadc0de) -- sentinel to be replaced with BNZ or B
+                table.insert(block_jumps, #self.code_)
+            end
+
+            -- Generate code for blocks (one after another).
+            for i, sub in ipairs(ast:children()) do
+                local sub_node = sub:node()
+                local block_jump = block_jumps[i]
+
+                -- Fix jump instructions for the tests.
+                if sub_node.tag == "case_" then
+                    self.code_[block_jump] = self:branchRelative(OPCODES.BNZ, self:nextCodeLoc() - block_jump)
+                elseif sub_node.tag == "default_" then
+                    self.code_[block_jump] = self:branchRelative(OPCODES.B, self:nextCodeLoc() - block_jump)
+                end
+
+                -- Pop the test expression the restore the stack.
+                table.insert(self.code_, OPCODES.make(OPCODES.POP))
+                self:codeGenSeq(sub_node.block) 
+            end
+        end
+            
+        self:exitBreakContext()
     elseif node.tag == "return" then
         if node.expression ~= nil then
             self:codeGenExp(node.expression)
