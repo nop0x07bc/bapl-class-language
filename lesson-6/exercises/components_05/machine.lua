@@ -22,6 +22,9 @@ Machine.OPCODES.VARIANT_BIT = 56 -- start position of the instruction variant.
 Machine.OPCODES.PUSH      = 0x10 -- Push the value at memory[pc + 1] to the stack.
 Machine.OPCODES.LOAD      = 0x11 -- Push the value at memory[memory[pc + 1]] to the stack.
 Machine.OPCODES.STORE     = 0x12 -- Pop TOS and store at memory[memory[pc + 1]].
+Machine.OPCODES.EXCH      = 0x13 -- Pop 2 elements TOS(0), TOS(1) and pushes TOS(0) and then TOS(1)
+Machine.OPCODES.POP       = 0x14 -- Pop 1 element TOS(0) from the stack.
+Machine.OPCODES.DUP       = 0x15 -- Push a copy of TOS(0) onto the stack.
 Machine.OPCODES.ADD       = 0x20 -- Pop 2 elements TOS(0), TOS(1) and push the sum to TOS(0).
 Machine.OPCODES.SUB       = 0x21 -- Pop 2 elements TOS(0), TOS(1) and push the difference TOS(1) - TOS(0) to TOS(0)
 Machine.OPCODES.MULT      = 0x22 -- Pop 2 elements TOS(0), TOS(1) and push the product to TOS(0)
@@ -36,6 +39,7 @@ Machine.OPCODES.GT        = 0x2a -- Pop 2 elements TOS(0), TOS(1) and push the c
 Machine.OPCODES.GE        = 0x2b -- Pop 2 elements TOS(0), TOS(1) and push the comparsion TOS(1) >= TOS(0) to TOS(0)
 Machine.OPCODES.NEG       = 0x30 -- Pop 1 element TOS(0) and push the negation -TOS(0) to the stack.
 Machine.OPCODES.NOT       = 0x31 -- Pop 1 element TOS(0) and push the logical negation !TOS(0) to the stack.
+Machine.OPCODES.DEC       = 0x32 -- Pop 1 element TOS(0) and push TOS(0) - 1
 Machine.OPCODES.RETURN    = 0xA0 -- Exit current function. Note: for now it exits the VM run function.
 Machine.OPCODES.JMP       = 0xA1 -- Jump unconditionally and absolutely pc <- memory[pc + 1]
 -- TODO(peter): Make the branch instruction more compact. We can use the bitfields after the "variant"
@@ -48,8 +52,9 @@ Machine.OPCODES.BZP       = 0xA5 -- If TOS(0) == 0 branch relative pc <- (memory
 Machine.OPCODES.BNZP      = 0xA6 -- If TOS(0) != 0 branch relative pc <- (memory[pc] & 0xffffffff - 0x7fffffff) and do not pop an element, 
                                  -- otherwise pc <- pc + 1 and pop 1 element of the stack.
 Machine.OPCODES.NEWARR    = 0xB0 -- Pop 1 element TOS(0), create array storage of size TOS(0) and push address to stack.
-Machine.OPCODES.GETARR    = 0xB1 -- Pop 2 elements TOS(0), TOS(1) from the stack and push the contents of array (TOS(0)) at index (TOS(1)) 
-Machine.OPCODES.SETARR    = 0xB2 -- Pop 3 elements TOS(0), TOS(1), TOS(2) from the stack, set array (TOS(0)) at index (TOS(1)) to TOS(2).
+Machine.OPCODES.GETARR    = 0xB1 -- Pop 2 elements TOS(0), TOS(1) from the stack and push the contents of array (TOS(1)) at index (TOS(0)) 
+Machine.OPCODES.SETARR    = 0xB2 -- Pop 3 elements TOS(0), TOS(1), TOS(2) from the stack, set array (TOS(2)) at index (TOS(1)) to TOS(0).
+Machine.OPCODES.SETARRP   = 0xB3 -- Pop 1 element TOS(0) from the stack, set array (TOS(2)) at index (TOS(1)) to TOS(0).
 Machine.OPCODES.HALT      = 0xF0 -- Halt the machine,
 Machine.OPCODES.PRINT     = 0xF1 -- Print TOS via io channel. Leaves stack unchanged.
 function toBool (a)
@@ -82,6 +87,9 @@ Machine.OPCODES.NAME_LOOKUP = {
     [Machine.OPCODES.PUSH]      = "PUSH",
     [Machine.OPCODES.LOAD]      = "LOAD",
     [Machine.OPCODES.STORE]     = "STORE",
+    [Machine.OPCODES.EXCH]      = "EXCH",
+    [Machine.OPCODES.POP]       = "POP",
+    [Machine.OPCODES.DUP]       = "DUP",
     [Machine.OPCODES.ADD]       = "ADD",
     [Machine.OPCODES.SUB]       = "SUB",
     [Machine.OPCODES.MULT]      = "MULT",
@@ -96,6 +104,7 @@ Machine.OPCODES.NAME_LOOKUP = {
     [Machine.OPCODES.GE]        = "GE",
     [Machine.OPCODES.NEG]       = "NEG",
     [Machine.OPCODES.NOT]       = "NOT",
+    [Machine.OPCODES.DEC]       = "DEC",
     [Machine.OPCODES.RETURN]    = "RETURN",
     [Machine.OPCODES.JMP]       = "JMP",
     [Machine.OPCODES.B]         = "B",
@@ -106,6 +115,7 @@ Machine.OPCODES.NAME_LOOKUP = {
     [Machine.OPCODES.NEWARR]    = "NEWARR",
     [Machine.OPCODES.GETARR]    = "GETARR",
     [Machine.OPCODES.SETARR]    = "SETARR",
+    [Machine.OPCODES.SETARRP]   = "SETARRP",
     [Machine.OPCODES.HALT]      = "HALT",
     [Machine.OPCODES.PRINT]     = "PRINT",
 }
@@ -283,6 +293,19 @@ function Machine:step ()
         operand = self.memory_[self.pc_ + 1]
         self.memory_[operand] = self.stack_:pop()
         self.pc_ = self.pc_ + 2
+    elseif op_variant == Machine.OPCODES.EXCH then
+        local tos_0 = self.stack_:pop()
+        local tos_1 = self.stack_:pop()
+        self.stack_:push(tos_0)
+        self.stack_:push(tos_1)
+        self.pc_ = self.pc_ + 1
+    elseif op_variant == Machine.OPCODES.POP then
+        self.stack_:pop()
+        self.pc_ = self.pc_ + 1
+    elseif op_variant == Machine.OPCODES.DUP then
+        local tos_0 = self.stack_:peek()
+        self.stack_:push(tos_0)
+        self.pc_ = self.pc_ + 1
     elseif op_variant == Machine.OPCODES.NEWARR then
         local tos_0 = self.stack_:pop()
         self.stack_:push({size = tos_0})
@@ -305,6 +328,16 @@ function Machine:step ()
         tos_2[tos_1] = tos_0
 
         self.pc_ = self.pc_ + 1
+    elseif op_variant == Machine.OPCODES.SETARRP then
+        local tos_0 = self.stack_:pop()  -- value
+        local tos_1 = self.stack_:peek() -- index
+        local tos_2 = self.stack_:peek(1) -- array
+        assert(type(tos_2) == "table", make_error(ERROR_CODES.TYPE_MISMATCH, {message = "Expected array"}))
+        assert(1 <= tos_1 and tos_1 <= tos_2.size, make_error(ERROR_CODES.INDEX_OUT_OF_RANGE, {message = "Index out of range"}))
+
+        tos_2[tos_1] = tos_0
+
+        self.pc_ = self.pc_ + 1
     elseif op_variant == Machine.OPCODES.PRINT then
         local tos_0 = self.stack_:peek()
         local out   = ""
@@ -317,6 +350,10 @@ function Machine:step ()
         end
         
         self.io_:write(out .. "\n")
+        self.pc_ = self.pc_ + 1
+    elseif op_variant == Machine.OPCODES.DEC then
+        local tos_0 = self.stack_:pop()
+        self.stack_:push(tos_0 - 1) 
         self.pc_ = self.pc_ + 1
     elseif binop_fn ~= nil then
         local tos_0 = self.stack_:pop()

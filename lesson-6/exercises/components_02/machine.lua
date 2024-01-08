@@ -48,8 +48,8 @@ Machine.OPCODES.BZP       = 0xA5 -- If TOS(0) == 0 branch relative pc <- (memory
 Machine.OPCODES.BNZP      = 0xA6 -- If TOS(0) != 0 branch relative pc <- (memory[pc] & 0xffffffff - 0x7fffffff) and do not pop an element, 
                                  -- otherwise pc <- pc + 1 and pop 1 element of the stack.
 Machine.OPCODES.NEWARR    = 0xB0 -- Pop 1 element TOS(0), create array storage of size TOS(0) and push address to stack.
-Machine.OPCODES.GETARR    = 0xB1 -- Pop 2 elements TOS(0), TOS(1) from the stack and push the contents of array (TOS(0)) at index (TOS(1)) 
-Machine.OPCODES.SETARR    = 0xB2 -- Pop 3 elements TOS(0), TOS(1), TOS(2) from the stack, set array (TOS(0)) at index (TOS(1)) to TOS(2).
+Machine.OPCODES.GETARR    = 0xB1 -- Pop 2 elements TOS(0), TOS(1) from the stack and push the contents of array (TOS(1)) at index (TOS(0)) 
+Machine.OPCODES.SETARR    = 0xB2 -- Pop 3 elements TOS(0), TOS(1), TOS(2) from the stack, set array (TOS(2)) at index (TOS(1)) to TOS(0).
 Machine.OPCODES.HALT      = 0xF0 -- Halt the machine,
 Machine.OPCODES.PRINT     = 0xF1 -- Print TOS via io channel. Leaves stack unchanged.
 function toBool (a)
@@ -271,21 +271,21 @@ function Machine:step ()
         self.stack_:push({size = tos_0})
         self.pc_ = self.pc_ + 1
     elseif op_variant == Machine.OPCODES.GETARR then
-        local tos_0 = self.stack_:pop() -- array
-        local tos_1 = self.stack_:pop() -- index
-        assert(type(tos_0) == "table", make_error(ERROR_CODES.TYPE_MISMATCH, {message = "Expected array"}))
-        assert(1 <= tos_1 and tos_1 <= tos_0.size, make_error(ERROR_CODES.INDEX_OUT_OF_RANGE, {message = "Index out of range"}))
+        local tos_0 = self.stack_:pop() -- index
+        local tos_1 = self.stack_:pop() -- array
+        assert(type(tos_1) == "table", make_error(ERROR_CODES.TYPE_MISMATCH, {message = "Expected array"}))
+        assert(1 <= tos_0 and tos_0 <= tos_1.size, make_error(ERROR_CODES.INDEX_OUT_OF_RANGE, {message = "Index out of range"}))
 
-        self.stack_:push(tos_0[tos_1])
+        self.stack_:push(tos_1[tos_0])
         self.pc_ = self.pc_ + 1
     elseif op_variant == Machine.OPCODES.SETARR then
-        local tos_0 = self.stack_:pop() -- array
+        local tos_0 = self.stack_:pop() -- value
         local tos_1 = self.stack_:pop() -- index
-        local tos_2 = self.stack_:pop() -- value
-        assert(type(tos_0) == "table", make_error(ERROR_CODES.TYPE_MISMATCH, {message = "Expected array"}))
-        assert(1 <= tos_1 and tos_1 <= tos_0.size, make_error(ERROR_CODES.INDEX_OUT_OF_RANGE, {message = "Index out of range"}))
+        local tos_2 = self.stack_:pop() -- array
+        assert(type(tos_2) == "table", make_error(ERROR_CODES.TYPE_MISMATCH, {message = "Expected array"}))
+        assert(1 <= tos_1 and tos_1 <= tos_2.size, make_error(ERROR_CODES.INDEX_OUT_OF_RANGE, {message = "Index out of range"}))
 
-        tos_0[tos_1] = tos_2
+        tos_2[tos_1] = tos_0
 
         self.pc_ = self.pc_ + 1
     elseif op_variant == Machine.OPCODES.PRINT then

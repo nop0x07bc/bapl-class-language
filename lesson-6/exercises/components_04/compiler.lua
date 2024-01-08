@@ -263,7 +263,7 @@ local grammar = lpeg.P{
     comparison  = lpeg.Cf(addend * lpeg.Cg(opC * addend)^0, processOpL), 
     logical     = lpeg.Cf(comparison * lpeg.Cg(T("and") * comparison)^0, processLogical("and")),
     expression  = lpeg.Cf(logical * lpeg.Cg(T("or") * logical)^0,processLogical("or")),       
-    lhs         = variable * T"[" * expression * T"]" / node("indexed", "array")
+    lhs         = variable * T"[" * expression * T"]" / node("indexed", "array", "index")
                 + variable,
     sequence    = block * (sequence)^-1 / node("sequence")
                 + statement * (T";" * sequence)^-1 / node("sequence"),
@@ -397,14 +397,8 @@ function Compiler:codeGenExp(ast)
             self.code_[b0_location] = self:branchRelative(OPCODES.BNZP, self:nextCodeLoc() - b0_location)
         end
     elseif node.tag == "indexed" then
-       local array = node.array:node().identifier
-        -- check that the variable has been defined
-        assert(self.env_[array] ~= nil, make_error(ERROR_CODES.UNDEFINED_VARIABLE, {identifier = array}))
-        table.insert(self.code_, OPCODES.make(OPCODES.LOAD))
-        -- Insert a sentinel value. We will update this with an pointer to the storage 
-        -- of the variable during the program generation phase.
-        table.insert(self.code_, 0xdeadc0de)
-        self:envAddRef(array, #self.code_) -- Add a reference to array location
+        self:codeGenExp(node.array)
+        self:codeGenExp(node.index)
         table.insert(self.code_, OPCODES.make(OPCODES.GETARR)) 
     elseif node.tag == "new" then
         table.insert(self.code_, OPCODES.make(OPCODES.NEWARR)) 
@@ -413,26 +407,23 @@ function Compiler:codeGenExp(ast)
     end
 end
 
-function Compiler:codeGenLhs(ast)
-    local node = ast:node()
-    for _, sub in pairs(ast:children()) do
-        self:codeGenExp(sub)
-    end
-    if node.tag == "variable" then
+function Compiler:codeGenAssignment(ast)
+    local node       = ast:node()
+    local lhs        = node.lhs:node()
+    local expression = node.expression
+
+    if lhs.tag == "variable" then
+        self:codeGenExp(expression)
         -- Insert store instruction (pops TOS and writes to code[code[pc + 1]])
         table.insert(self.code_, OPCODES.make(OPCODES.STORE))
         -- Insert a sentinel value. We will update this with an pointer to the storage 
         -- of the variable during the program generation phase.
         table.insert(self.code_, 0xdeadc0de)
-        self:envAddRef(node.identifier, #self.code_)
-    elseif node.tag == "indexed" then
-        local array = node.array:node().identifier
-        assert(self.env_[array] ~= nil, make_error(ERROR_CODES.UNDEFINED_VARIABLE, {identifier = array}))
-        table.insert(self.code_, OPCODES.make(OPCODES.LOAD))
-        -- Insert a sentinel value. We will update this with an pointer to the storage 
-        -- of the variable during the program generation phase.
-        table.insert(self.code_, 0xdeadc0de)
-        self:envAddRef(array, #self.code_) -- Add a reference to array location
+        self:envAddRef(lhs.identifier, #self.code_)
+    elseif lhs.tag == "indexed" then
+        self:codeGenExp(lhs.array)
+        self:codeGenExp(lhs.index)
+        self:codeGenExp(expression)
         table.insert(self.code_, OPCODES.make(OPCODES.SETARR)) 
     end
 end
@@ -441,15 +432,10 @@ function Compiler:codeGenSeq(ast)
     local node = ast:node()
     
     if node.tag == "assignment" then
-        local lhs        = node.lhs
-        local expression = node.expression
-        if lhs ~= nil and expression ~= nil then
-            -- Generate code that evaluates the expression and puts the result
-            -- on TOS.
-            self:codeGenExp(expression)
-            self:codeGenLhs(lhs)
+        if node.expression then
+            self:codeGenAssignment(ast)
         else
-            -- Ignore empty statement
+            -- skip empty assignment
         end
     elseif node.tag == "sequence" then
         for _, sub in pairs(ast:children()) do

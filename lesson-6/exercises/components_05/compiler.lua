@@ -117,6 +117,24 @@ local function processLogical(op)
     end
 end
 
+local function processIndex(lst)
+    local tree = lst[1] -- variable 
+    for i = 2, #lst do
+        tree = Tree:new({tag = "indexed", array = tree, index = lst[i]})
+    end
+    return tree
+end
+
+local function processNew(lst, index)
+    local index = index or 1
+    local size = lst[index]
+    if #lst == index then
+        return Tree:new({tag = "new", size = size})
+    else
+        return Tree:new({tag = "new", size = size, rest = processNew(lst, index + 1)})
+    end
+end
+
 
 -- Debug 
 local function D(message)
@@ -252,7 +270,7 @@ local ifrest     = lpeg.V"ifrest"
 local grammar = lpeg.P{
     "program",
     program     = space * sequence,
-    primary     = R"new" * T"[" * expression * T"]" / node("new")
+    primary     = lpeg.Ct(R"new" * (T"[" * expression * T"]")^1) /  processNew
                 + numeral 
                 + T"(" * expression * T")"
                 + lhs,
@@ -263,7 +281,7 @@ local grammar = lpeg.P{
     comparison  = lpeg.Cf(addend * lpeg.Cg(opC * addend)^0, processOpL), 
     logical     = lpeg.Cf(comparison * lpeg.Cg(T("and") * comparison)^0, processLogical("and")),
     expression  = lpeg.Cf(logical * lpeg.Cg(T("or") * logical)^0,processLogical("or")),       
-    lhs         = variable * T"[" * expression * T"]" / node("indexed", "array", "index")
+    lhs         = lpeg.Ct(variable * (T"[" * expression * T"]")^0) / processIndex
                 + variable,
     sequence    = block * (sequence)^-1 / node("sequence")
                 + statement * (T";" * sequence)^-1 / node("sequence"),
@@ -352,13 +370,37 @@ function Compiler:constantFold (ast)
     end
 end
 
+function Compiler:codeGenNew(ast)
+    local node = ast:node()
+
+    local size = node.size
+    local rest = node.rest
+    self:codeGenExp(size)
+    table.insert(self.code_, OPCODES.make(OPCODES.NEWARR)) 
+    if rest then
+        self:codeGenExp(size)
+        table.insert(self.code_, OPCODES.make(OPCODES.DUP))
+        table.insert(self.code_, 0xdeadc0de) -- We will place the branch instruction here.
+        local bz_location = #self.code_
+        self:codeGenNew(rest)  
+        table.insert(self.code_, OPCODES.make(OPCODES.SETARRP))  
+        table.insert(self.code_, OPCODES.make(OPCODES.DEC))
+        table.insert(self.code_, OPCODES.make(OPCODES.DUP))
+        table.insert(self.code_, self:branchRelative(OPCODES.B, bz_location - self:nextCodeLoc()))
+        self.code_[bz_location] = self:branchRelative(OPCODES.BZ, self:nextCodeLoc() - bz_location)
+        table.insert(self.code_, OPCODES.make(OPCODES.POP))
+    end
+end
+
+
 function Compiler:codeGenExp(ast) 
     local ast = self:constantFold(ast)
+    local node = ast:node()
+
     for _, sub in pairs(ast:children()) do
         self:codeGenExp(sub)
     end
     
-    local node = ast:node()
 
     if node.tag == "number" then
         table.insert(self.code_, OPCODES.make(OPCODES.PUSH))
@@ -401,7 +443,7 @@ function Compiler:codeGenExp(ast)
         self:codeGenExp(node.index)
         table.insert(self.code_, OPCODES.make(OPCODES.GETARR)) 
     elseif node.tag == "new" then
-        table.insert(self.code_, OPCODES.make(OPCODES.NEWARR)) 
+        self:codeGenNew(ast)
     else
         error(make_error(ERROR_CODES.UNEXPECTED_TAG, {tag = node.tag}))
     end
@@ -430,7 +472,7 @@ end
 
 function Compiler:codeGenSeq(ast)
     local node = ast:node()
-    
+
     if node.tag == "assignment" then
         if node.expression then
             self:codeGenAssignment(ast)
