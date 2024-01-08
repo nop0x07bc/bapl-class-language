@@ -1,5 +1,5 @@
-width = 100;
-height = 100;
+width = 10;
+height = 10;
 cell = 3;
 
 image = new [width][height][cell];
