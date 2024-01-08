@@ -4,6 +4,8 @@ cell = 3;
 
 image = new [width][height][cell];
 
+@ image;
+
 w = 1;
 while w <= width
 {
