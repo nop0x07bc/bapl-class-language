@@ -158,7 +158,7 @@ end
 
 local utils = {}
 
-function utils.printStep(pc, op, operand, tos, stacksize)
+function utils.printStep(pc, op, operand, tos, stacksize, cc)
     local op_name = Machine.OPCODES.NAME_LOOKUP[op]
     local tos_string = ""
     if type(tos) == "number" then
@@ -176,7 +176,9 @@ function utils.printStep(pc, op, operand, tos, stacksize)
     else
         tos_string = tostring(tos)
     end
-  
+    
+    cc_string = string.format("C:%08x", cc.id)
+    
     local operand_is_address = {
         [Machine.OPCODES.LOAD]  = true,
         [Machine.OPCODES.STORE] = true, 
@@ -196,11 +198,11 @@ function utils.printStep(pc, op, operand, tos, stacksize)
     
     stacksize = stacksize and tostring(stacksize) or ""
 
-    print(string.format("%08x: %-9s %10s %21s %10s", pc, op_name, operand_string, tos_string, stacksize))
+    print(string.format("%08x: %-9s %10s %21s %10s %10s", pc, op_name, operand_string, tos_string, stacksize, cc_string))
 end
 
 function utils.printHeader()
-    local hdr = string.format("%-9s %-9s %10s %21s %10s", "Address", "Operation", "Operand", "TOS", "Stack Size")
+    local hdr = string.format("%-9s %-9s %10s %21s %10s %10s", "Address", "Operation", "Operand", "TOS", "Stack Size", "Closure")
     print(hdr)
     print(string.rep('-', string.len(hdr) + 1))
 end
@@ -247,14 +249,19 @@ end
 function Machine:new (ios)
     local ios = ios or io.stdout
     local machine = { 
-        pc_     = 1,                       -- Program counter
-        code_   = {Machine.OPCODES.HALT},  -- Code segment
-        data_   = {},                      -- Data segment
-        stack_  = Stack:new(),             -- Data stack
-        call_   = Stack:new(),             -- Call stack
-        trace_  = false,                   -- trace flag
-        obj_id_ = 0,                       -- the id of objects created
-        io_     = ios,                     -- io channels
+        pc_      = 1,                       -- Program counter
+        code_    = {},                      -- Code segment
+        data_    = {},                      -- Data segment
+        stack_   = Stack:new(),             -- Data stack
+        call_    = Stack:new(),             -- Call stack
+        trace_   = false,                   -- trace flag
+        obj_id_  = 0,                       -- the id of objects created
+        io_      = ios,                     -- io channels
+        closure_ = {tag = "closure",        -- the current executing closure
+                    code = {},
+                    data = {},
+                    arity = 0,
+                    id = -1},
     }
     setmetatable(machine, Machine)
     return machine
@@ -277,16 +284,28 @@ end
 
 -- Loads a program and set pc to 1 (e.g start of program).
 function Machine:load (image)
-    self.code_   = image.code
-    self.data_   = image.data
-    self.pc_     = 1
-    self.stack_  = Stack:new()
-    self.call_   = Stack:new()
+    self.closure_ = image
+    self.code_    = self.closure_.code
+    self.data_    = self.closure_.data
+    self.pc_      = 1
+    self.stack_   = Stack:new()
+    self.call_    = Stack:new()
 
 
     -- At the top level make sure the call stack has the return to
     -- HALT program...
-    self.call_:push({code = {Machine.OPCODES.make(Machine.OPCODES.HALT)}, data = {}, pc = 1})
+    local halt_closure = {
+        code = {Machine.OPCODES.make(Machine.OPCODES.HALT)},
+        data = {},
+        id   = -2,
+        tag  = "closure"
+    }
+    self.call_:push({
+        closure = halt_closure,
+        code = halt_closure.code, 
+        data = halt_closure.data, 
+        pc = 1,
+    })
 end
 
 -- Step the machine 1 instruction. I.e
@@ -438,17 +457,26 @@ function Machine:step ()
         assert(type(tos_0) == "table" and tos_0.tag == "closure", make_error(ERROR_CODES.TYPE_MISMATCH, {message = "Expected closure"}))
         assert(tos_0.arity == tos_1, make_error(ERROR_CODES.CLOSURE_ARITY, {message = "Expected " .. tos_1 .. " parameters."}))
         -- save current context
-        self.call_:push({code = self.code_, data = utils.shallow_copy(self.data_), pc = self.pc_ + 1})
-        
-        self.code_ = tos_0.code
-        self.data_ = tos_0.data
-        self.pc_   = 1
+        self.call_:push({
+            code = self.code_, 
+            data = utils.shallow_copy(self.data_), 
+            closure = self.closure_,
+            pc = self.pc_ + 1,
+        })
+       
+        self.code_    = tos_0.code
+        self.data_    = tos_0.data
+        self.closure_ = tos_0
+        self.pc_      = 1
     elseif op_variant == Machine.OPCODES.RETURN then
-        -- restore previous context
+        -- store all changes in closure.
+        self.closure_.data = self.data_
+        -- restore previous context.
         local call_info = self.call_:pop()
-        self.code_ = call_info.code
-        self.data_ = call_info.data
-        self.pc_   = call_info.pc
+        self.code_    = call_info.code
+        self.data_    = call_info.data
+        self.closure_ = call_info.closure
+        self.pc_      = call_info.pc
     elseif op_variant == Machine.OPCODES.PRINT then
         local tos_0 = self.stack_:pop()
         local out   = ""
@@ -545,7 +573,7 @@ function Machine:step ()
     end
 
     if self.trace_ then
-        utils.printStep(pc, op_variant, operand, self:tos(), #self.stack_)
+        utils.printStep(pc, op_variant, operand, self:tos(), #self.stack_, self.closure_)
     end
 end
 
