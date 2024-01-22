@@ -10,6 +10,7 @@ local input = io.stdin
 
 
 
+
 -- Helpers
 
 -- Evaluate a string representing an expression in our language. 
@@ -20,7 +21,8 @@ local input = io.stdin
 local function eval (str)
     status, data = pcall(compiler.compile, str)
     if not status then
-        io.stderr:write(data.payload.message)
+        local inspect = require "inspect" 
+        io.stderr:write(inspect.inspect(data))        
         return nil
     end
     machine:load(data)

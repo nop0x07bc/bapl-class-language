@@ -437,6 +437,11 @@ end
 
 function Compiler:genLoad(id, mark)
     local mark = mark or true
+    -- Relax this condition now that we deal with lambdas / closures. Instead add it to the free list!
+    -- check that the variable has been defined only at the top level (uknown variables in closure will propagate).
+    if self.top_ then
+        assert(self:envFindIdUp(id) ~= nil, make_error(ERROR_CODES.UNDEFINED_VARIABLE, {identifier = id}))
+    end
     table.insert(self.code_, OPCODES.make(OPCODES.LOAD))
     table.insert(self.code_, 0xdeadc0de)
     if mark and self:envFindIdUp(id) == nil then
@@ -529,11 +534,6 @@ function Compiler:codeGenExp(ast)
         local op = OPCODES.make(node.value)
         table.insert(self.code_, op)
     elseif node.tag == "variable" then
-        -- Relax this condition now that we deal with lambdas / closures. Instead add it to the free list!
-        -- check that the variable has been defined only at the top level (uknown variables in closure will propagate).
-        if self.top_ then
-            assert(self:envFindIdUp(node.identifier) ~= nil, make_error(ERROR_CODES.UNDEFINED_VARIABLE, {identifier = node.identifier}))
-        end
         self:genLoad(node.identifier)
     elseif node.tag == "logical" then
         local left     = node.left
