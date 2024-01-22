@@ -211,7 +211,7 @@ values. But I wanted to use all new shiny features of the language.
 
 Running the command above yields the following `pgm`:
 
-![mandelbrot](test.pgm)
+![mandelbrot](test.png)
 
 The code listing:
 
