@@ -368,6 +368,7 @@ function main()
         }
     }
     write(stdout, {0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, 0x21, 0x0a});
+    write(stdout, "\x0aHello Brave\x20World!\n");
 
     function range(start, stop)
     {
@@ -402,6 +403,17 @@ function main()
     }
 
 }
+
+function rgb(r = 0x00, g = 0x00, b = 0x00)
+{
+    return {r, g, b};
+}
+
+@ rgb();
+@ rgb(123);
+@ rgb(99, 15);
+@ rgb(93, 23, 22);
+
 
 main();
 

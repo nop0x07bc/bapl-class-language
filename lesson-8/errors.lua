@@ -20,7 +20,7 @@ local ERROR_MESSAGES = {
     [ERROR_CODES.UNEXPECTED_VALUE]   = "Unexpected value",
     [ERROR_CODES.NO_LOOP]            = "Break without a loop",
     [ERROR_CODES.INDEX_OUT_OF_RANGE] = "Index out of range",
-    [ERROR_CODES.CLOSURE_ARITY]      = "Closure arity mis match",
+    [ERROR_CODES.CLOSURE_ARITY]      = "Closure arity mismatch",
     [ERROR_CODES.REDECLARATION]      = "Redaclaration of variable or function",
     [ERROR_CODES.PARAM_NO_DEFAULT]   = "Expected a param with default value",
 }

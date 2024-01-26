@@ -466,7 +466,7 @@ function Machine:step ()
             message = "Expected closure"
         }))
         assert(tos_0.arity >= tos_1 and tos_0.min_arity <= tos_1, make_error(ERROR_CODES.CLOSURE_ARITY, {
-            message = "Expected between" .. tos_0.min_arity .. " and " .. tos_0.arity .. " parameters."
+            message = "Expected between " .. tos_0.min_arity .. " and " .. tos_0.arity .. " parameters."
         }))
         -- save current context
         self.call_:push({

@@ -192,6 +192,23 @@ TestMachine = {}
         lu.assertEquals(eval("variable y = 2; variable f = lambda (x) { return x + y; }; @ f (10); return f(11);"), 13)
         lu.assertEquals(eval("variable y = 2; variable f = lambda (x) { return x + y; }; y = 6; @ f (10); return f(11);"), 13)
 
+        -- Optional arguments
+        -- status, data = pcall(eval, "function g(x, y = 2, z) { return x + y + z; }")
+        status, data = pcall(eval, "function g(x, y = 2, z) { return x + y + z; }")
+        lu.assertEquals(status, false)
+        lu.assertEquals(data.code, errors.ERROR_CODES.PARAM_NO_DEFAULT)
+        lu.assertEquals(data.payload.identifier, "z")
+
+        lu.assertEquals(eval("function g(x, y = 2, z = 3) { return x + y + z; }; return g(10);"), 15) 
+        lu.assertEquals(eval("function g(x, y = 2, z = 3) { return x + y + z; }; return g(10, 20);"), 33) 
+        lu.assertEquals(eval("function g(x, y = 2, z = 3) { return x + y + z; }; return g(10, 20, 30);"), 60) 
+        status, data = pcall(eval, "function g(x, y = 2, z = 3) { return x + y + z; }; return g();")
+        lu.assertEquals(status, false)
+        lu.assertEquals(data.code, errors.ERROR_CODES.CLOSURE_ARITY)
+        status, data = pcall(eval, "function g(x, y = 2, z = 3) { return x + y + z; }; return g(1, 2, 3, 4);")
+        lu.assertEquals(status, false)
+        lu.assertEquals(data.code, errors.ERROR_CODES.CLOSURE_ARITY)
+
         test_file = io.open("lesson-8/test.xpl", "r"):read("a")
         status, data = pcall(eval, test_file)
         lu.assertEquals(status, true)
