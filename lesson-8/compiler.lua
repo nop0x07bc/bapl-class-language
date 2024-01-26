@@ -206,6 +206,8 @@ local numeral_wo_e = (hex_integer
                       + integer)
 local numeral = ((numeral_wo_e * (lpeg.S("eE") * integer)^-1) / tonumber / node("number", "value")) * space
 
+
+
 -- Reserved words, identifiers and variables
 local underscore = lpeg.P"_"
 local alpha = lpeg.R("AZ", "az")
@@ -263,6 +265,20 @@ local identifier_postfix = alphanum + underscore
 local identifier = lpeg.C(ID_START * identifier_prefix * identifier_postfix^0 * ID_END) * space
 local variable = identifier / node("variable", "identifier")
 
+-- Strings
+
+local hexescape   = lpeg.P("\\x") * (hex_digit^2 / function (hex) return 0 + ("0x" .. hex) end) / node("number", "value")
+local lfescape    = lpeg.P("\\n")  / function () return 0x0a; end / node("number", "value") 
+local crescape    = lpeg.P("\\r")  / function () return 0x0d; end / node("number", "value") 
+local tabescape   = lpeg.P("\\t")  / function () return 0x09; end / node("number", "value") 
+local quotescape  = lpeg.P("\\\"") / function () return 0x22; end / node("number", "value") 
+local backescape  = lpeg.P("\\\\") / function () return 0x5c; end / node("number", "value")
+local char        = (lpeg.R(" ~") - lpeg.S("\\\"")) / string.byte / node("number", "value")
+local str         = lpeg.P("\"") 
+                  * lpeg.Ct((hexescape + lfescape + crescape + tabescape + quotescape + backescape + char)^0) 
+                  * lpeg.P("\"")
+
+
 -- Operators
 local opC = lpeg.C(lpeg.P"!=" + "==" + "<=" + ">=" + "<" + ">") * space
 local opA = lpeg.C(lpeg.S"+-") * space
@@ -294,12 +310,14 @@ local for1stmt    = lpeg.V"for1stmt"
 local for2stmt    = lpeg.V"for2stmt"
 local params      = lpeg.V"params"
 local args        = lpeg.V"args"
+local optparams   = lpeg.V"optparams"
+local idassign    = lpeg.V"idassign"
 -- Statement grammar
 local grammar = lpeg.P{
     "program",
     program     = space * sequence,
     primary     = ((lhs + T"(" * expression * T")") * args) / node("call", "lambdaexpr", "params")
-                + (R"lambda" * params * block) / node("lambda", "params", "block")
+                + (R"lambda" * optparams * block) / node("lambda", "params", "block")
                 + lpeg.Ct(R"new" * (T"[" * expression * T"]")^1) /  processNew
                 + lpeg.Ct(T"{" * expression * (T"," * expression)^0 * T"}") / node("newconstr", "elements")
                 + numeral 
@@ -307,6 +325,7 @@ local grammar = lpeg.P{
                 + R"len" * (expression / node("len"))
                 + T"(" * expression * T")"
                 + (R"stdin" + R"stdout" + R"stderr") / node("stdio", "file")
+                + str / node("newconstr", "elements")
                 + lhs,
     exponent    = lpeg.Ct((primary * opE)^0 * primary) / processOpR,
     negation    = lpeg.Ct(opN^0 * exponent) / processUnaryOp,
@@ -317,10 +336,13 @@ local grammar = lpeg.P{
     expression  = lpeg.Cf(logical * lpeg.Cg(T("or") * logical)^0,processLogical("or")),       
     lhs         = lpeg.Ct(variable * (T"[" * expression * T"]")^0) / processIndex
                 + variable,
+    idassign    = identifier * (opAssign * expression)^-1 / node("idassign", "identifier", "expression"),
     params      = T"(" * T")" / node("params", "_")
                 + (T"(" * identifier * (T"," * identifier)^0 * T")") / node("params"), 
     args        = T"(" * T")" / node("params", "_")
                 + (T"(" * expression * (T"," * expression)^0 * T")") / node("params"), 
+    optparams   = T"(" * T")" / node("params", "_")
+                + (T"(" * idassign * (T"," * idassign)^0 * T")") / node("params"), 
     sequence    = block * (sequence)^-1 / node("sequence")
                 + statement * (T";" * sequence)^-1 / node("sequence"),
     ifstmt      = (R("if") * expression * block * (ifrest + R("else") * block)^-1) 
@@ -339,8 +361,8 @@ local grammar = lpeg.P{
     for2stmt    = (R"for" * (identifier / node("declaration", "identifier")) * R"in" * expression * block) / node("for2_"),
     block       = T"{" * sequence * T";"^-1 * T"}" / node("block")
                 + (R("while") * expression * block) / node("while_", "condition", "whileblock")
-                + (((R("function") * identifier * params * block) / node("function_", "identifier", "params", "block"))
-                *  ((R("and") * identifier * params * block)^0 / node("function_", "identifier", "params", "block"))) / node("functions_")
+                + (((R("function") * identifier * optparams * block) / node("function_", "identifier", "params", "block"))
+                *  ((R("and") * identifier * optparams * block)^0 / node("function_", "identifier", "params", "block"))) / node("functions_")
                 + ifstmt
                 + switchstmt
                 + for1stmt
@@ -1071,6 +1093,30 @@ function Compiler:codeGenFunctions(ast)
     end
 end
 
+function Compiler:assertAndSplitParams(params)
+    local split = {
+        required = {},
+        optional = {}
+    }
+    local must_have_default = false
+    for _, param in ipairs(params) do
+        local id = param:node().identifier
+        local expr = param:node().expression
+        local param_has_default = expr ~= nil
+        if must_have_default then
+            assert(param_has_default, make_error(ERROR_CODES.PARAM_NO_DEFAULT, {identifier = id}))
+        end
+        must_have_default = param_has_default;
+        if param_has_default then
+            table.insert(split.optional, param)
+        else
+            table.insert(split.required, param)
+        end
+    end
+    return split
+end
+
+
 function Compiler:codeGenLambda(ast)
     local node       = ast:node()
     local params     = node.params:children()
@@ -1089,10 +1135,37 @@ function Compiler:codeGenLambda(ast)
 
     local top        = self.top_
     self.top_        = false
+
+
+    --- Check that params are ok.
+    local split = self:assertAndSplitParams(params)
+    local min_arity = #split.required
+    --- On the top of the stack is the number of parameters passed.
     --- store params from signature (pushed to stack) into closure local storage.
-    for _, param in ipairs(params) do
-        self:genStore(param, true)
+    for _, param in ipairs(split.required) do
+        local identifier = param:node().identifier;
+        table.insert(self.code_, OPCODES.make(OPCODES.DEC))
+        table.insert(self.code_, OPCODES.make(OPCODES.SWAP, 1))
+        self:genStore(identifier, true)
     end
+
+    for _, param in ipairs(split.optional) do
+        local identifier = param:node().identifier
+        local expression = param:node().expression
+        table.insert(self.code_, OPCODES.make(OPCODES.DEC))
+        table.insert(self.code_, OPCODES.make(OPCODES.DUP))
+        table.insert(self.code_, OPCODES.make(OPCODES.PUSH))
+        table.insert(self.code_, 0)
+        table.insert(self.code_, OPCODES.make(OPCODES.GE))
+        table.insert(self.code_, 0xdeadc0de)
+        local bnz_location = #self.code_
+        self:codeGenExp(expression)
+        table.insert(self.code_, OPCODES.make(OPCODES.SWAP, 1))
+        self.code_[bnz_location] = self:branchRelative(OPCODES.BNZ, self:nextCodeLoc() - bnz_location)
+        table.insert(self.code_, OPCODES.make(OPCODES.SWAP, 1))
+        self:genStore(identifier, true)
+    end
+    table.insert(self.code_, OPCODES.make(OPCODES.POP))
 
     -- generate the code for the lambda block
     self:codeGenBlock(block)
@@ -1103,7 +1176,8 @@ function Compiler:codeGenLambda(ast)
     table.insert(self.code_, OPCODES.make(OPCODES.RETURN))
 
     local closure = self:genProgramImage()
-    closure.arity = #params
+    closure.arity     = #split.required + #split.optional
+    closure.min_arity = min_arity
     -- Step 2: generate code for creating side.
     -- restore state to current closure.
     self.env_      = env
@@ -1220,7 +1294,7 @@ function Compiler:genProgramImage(data)
     data = data or {}
     self:genData(self.env_, data)
 
-    return { tag = "closure", code = self.code_, data = data, arity = 0, id = -1}
+    return { tag = "closure", code = self.code_, data = data, arity = 0, min_arity = 0, id = -1}
 end
 
 function Compiler:syntaxErrorPayload(input, pos)

@@ -74,16 +74,15 @@ function write_pbm(img)
 
     # write header
     # P6\n
-    write(stdout, {0x50, 0x36, 0x0a});
+    write(stdout, "P6\n");
     # <width><space>
     write(stdout, integer_to_ascii(width));
-    write(stdout, 0x20);
+    write(stdout, " ");
     # <height>\n
     write(stdout, integer_to_ascii(height));
-    write(stdout, 0x0a);
+    write(stdout, "\n");
     # <maxval>\n
-    write(stdout, integer_to_ascii(255));
-    write(stdout, 0x0a);
+    write(stdout, "\xff\n");
 
     for row in range(1, height, 1)
     {
@@ -152,25 +151,37 @@ function mandelbrot_score(c)
 
 function mandelbrot()
 {
-    variable height = 960;
-    variable width  = 1280;
+    # variable height = 960;
+    # variable width  = 1280;
+
+    variable height = 480;
+    variable width  = 640;
+    write(stderr, "Image size (wxh): ");
+    write(stderr, integer_to_ascii(width));
+    write(stderr, "x");
+    write(stderr, integer_to_ascii(height));
+    write(stderr, "\n");
+
+    variable re_range = {-0.1475, 0.47};
+    variable im_range = {-0.92625, -0.463125};
+
+    # variable re_range = {-2.00, 0.47};
+    # variable im_range = {-0.92625, 0.92625};
     
-    variable re_range = {-2.00, 0.47};
-    variable im_range = {-0.92625, 0.92625};
 
     variable img = new[height][width];
     
-    for row in range(1, height / 2, 1)
+    for row in range(1, height, 1)
     {
+        write(stderr, "Processing row: ");
         write(stderr, integer_to_ascii(row));
-        write(stderr, 0x0d);
+        write(stderr, "\r");
         for col in range(1, width, 1)
         {
             variable re = re_range[1] + (re_range[2] - re_range[1]) * ((col - 1) / width);
             variable im = im_range[1] + (im_range[2] - im_range[1]) * ((row - 1) / height);
             variable score = mandelbrot_score({re, im});
             img[row][col]              = score;
-            img[height + 1 - row][col] = score;
         }
     }
     
@@ -179,6 +190,7 @@ function mandelbrot()
 
 function main()
 {
+    write(stderr, "Welcome to v0.2 of the XPL mandelbrot generator!\n\n");
     variable img = mandelbrot();
     write_pbm(img);
 }

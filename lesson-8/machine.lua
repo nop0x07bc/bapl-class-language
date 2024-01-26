@@ -261,6 +261,7 @@ function Machine:new (ios)
                     code = {},
                     data = {},
                     arity = 0,
+                    min_arity = 0,
                     id = -1},
     }
     setmetatable(machine, Machine)
@@ -447,15 +448,26 @@ function Machine:step ()
         local tos_0 = self.stack_:pop() -- array
         local tos_1 = self.stack_:pop() -- closure to be filled.
         assert(type(tos_1) == "table" and tos_1.tag == "closure", make_error(ERROR_CODES.TYPE_MISMATCH, {message = "Expected closure"}))
-        self.stack_:push({tag = "closure", code = tos_1.code, data = tos_0, arity = tos_1.arity, id = self.obj_id_})
+        self.stack_:push({
+            tag = "closure",
+            code = tos_1.code,
+            data = tos_0, 
+            arity = tos_1.arity, 
+            min_arity = tos_1.min_arity, 
+            id = self.obj_id_
+        })
         self.obj_id_ = self.obj_id_ + 1
 
         self.pc_ = self.pc_ + 1
     elseif op_variant == Machine.OPCODES.CALL then
         local tos_0 = self.stack_:pop() -- the closure.
-        local tos_1 = self.stack_:pop() -- the arity.
-        assert(type(tos_0) == "table" and tos_0.tag == "closure", make_error(ERROR_CODES.TYPE_MISMATCH, {message = "Expected closure"}))
-        assert(tos_0.arity == tos_1, make_error(ERROR_CODES.CLOSURE_ARITY, {message = "Expected " .. tos_1 .. " parameters."}))
+        local tos_1 = self.stack_:peek() -- the arity.
+        assert(type(tos_0) == "table" and tos_0.tag == "closure", make_error(ERROR_CODES.TYPE_MISMATCH, {
+            message = "Expected closure"
+        }))
+        assert(tos_0.arity >= tos_1 and tos_0.min_arity <= tos_1, make_error(ERROR_CODES.CLOSURE_ARITY, {
+            message = "Expected between" .. tos_0.min_arity .. " and " .. tos_0.arity .. " parameters."
+        }))
         -- save current context
         self.call_:push({
             code = self.code_, 

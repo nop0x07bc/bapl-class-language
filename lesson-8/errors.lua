@@ -7,6 +7,7 @@ local ERROR_CODES = {
     NO_LOOP            = 0xE203,
     UNEXPECTED_VALUE   = 0xE204,
     REDECLARATION      = 0xE205,
+    PARAM_NO_DEFAULT   = 0xE205,
     -- runtime errors
     INDEX_OUT_OF_RANGE = 0xE301,
     TYPE_MISMATCH      = 0xE302,
@@ -21,6 +22,7 @@ local ERROR_MESSAGES = {
     [ERROR_CODES.INDEX_OUT_OF_RANGE] = "Index out of range",
     [ERROR_CODES.CLOSURE_ARITY]      = "Closure arity mis match",
     [ERROR_CODES.REDECLARATION]      = "Redaclaration of variable or function",
+    [ERROR_CODES.PARAM_NO_DEFAULT]   = "Expected a param with default value",
 }
 
 local function make_error(code, payload)
