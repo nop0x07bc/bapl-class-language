@@ -113,3 +113,10 @@ Is simply translated to an array of integers.
 
 Strings support escape sequences for linefeed, carriage return, tab, backslash, quotation and hexadecimal byte
 sequences. Please refer to test and `lesson-8/test.xpl` as well as `lesson-8/fractal.xpl` for usage.
+
+
+## Examples
+I updated the example program `lesson-8/fractal.xpl` to incorporate some of the new features for this weeks (mainly
+strings). 
+
+![mandelbrot](mandelbrot.png)
