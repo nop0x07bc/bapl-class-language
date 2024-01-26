@@ -185,6 +185,13 @@ TestMachine = {}
         lu.assertEquals(status, false)
         lu.assertEquals(data.code, errors.ERROR_CODES.UNDEFINED_VARIABLE)
         lu.assertEquals(data.payload.identifier, "y")
+        status, data = pcall(eval, "variable x = 10; { variable y = 15; x = x + y; }; variable x = 10; return x;");
+        lu.assertEquals(status, false)
+        lu.assertEquals(data.code, errors.ERROR_CODES.REDECLARATION)
+        lu.assertEquals(data.payload.identifier, "x")
+        lu.assertEquals(eval("variable x = 10; variable y; { variable x = 15; y = -10; y = x + y; } return y;"), 5)
+        lu.assertEquals(eval("variable x = 10; variable y; { variable x = 15; y = -10; y = x + y; } return x;"), 10)
+
 
         -- Functions
         lu.assertEquals(eval("variable f = lambda () { return 10; }; return f();"), 10)

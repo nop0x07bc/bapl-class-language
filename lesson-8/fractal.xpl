@@ -82,7 +82,7 @@ function write_pbm(img)
     write(stdout, integer_to_ascii(height));
     write(stdout, "\n");
     # <maxval>\n
-    write(stdout, "\xff\n");
+    write(stdout, "255\n");
 
     for row in range(1, height, 1)
     {

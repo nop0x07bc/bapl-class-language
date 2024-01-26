@@ -415,5 +415,23 @@ function rgb(r = 0x00, g = 0x00, b = 0x00)
 @ rgb(93, 23, 22);
 
 
+function substring(str, start, stop)
+{
+    variable length = stop - start + 1;
+    variable result = new[length];
+    for i = start; i <= stop; i = i + 1
+    {
+       result[i - start + 1] = str[i];
+    }
+
+    return result;
+}
+
+variable my_string = "[hello world]\n";
+write(stdout, my_string);
+write(stdout, substring(my_string, 2, 12));
+write(stdout, "\n");
+write(stdout, my_string);
+
 main();
 
