@@ -1,6 +1,6 @@
 # Final Project Report: eXperimental Programming Language (XPL)
 
-<p style="display:block;text-align: center;">
+<p align="center">
     <img width="640" height="480" src="mandelbrot.png">
 </p>
 
