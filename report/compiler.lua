@@ -198,10 +198,10 @@ local line_rest_1   = lpeg.V"line_rest_1"
 local block_rest    = lpeg.V"block_rest"
 local grammar_space = lpeg.P{
     "space",
-    comment       = '#{' * block_rest + '#' * line_rest_0,
+    comment       = '#{' * block_rest + '#' * lb + '#' * line_rest_0,
     block_rest    = '#}' + lpeg.P(1) * block_rest,
-    line_rest_0   = (lpeg.P(1) - '{') * line_rest_1 + lpeg.P(-1),
-    line_rest_1   = notlb * line_rest_1 + lb + lpeg.P(-1),
+    line_rest_0   = (lpeg.P(1) - '{') * line_rest_1,
+    line_rest_1   = notlb * line_rest_1 + lb,
     space         = lpeg.P(parsingPos) * (lpeg.S(" \n\t") + comment)^0,
 
 }
