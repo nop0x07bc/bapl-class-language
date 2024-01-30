@@ -1,7 +1,7 @@
 # Final Project Report: eXperimental Programming Language (XPL)
 
 <div style="text-align: center;">
-    <img width="100%" src="mandelbrot.png">
+    <img width="640" height="480" src="mandelbrot.png">
 </div>
 
 The name for XPL is inspired by the _X-plane_ series of experimental aircrafts. Just as its aerodynamical "brothers"
