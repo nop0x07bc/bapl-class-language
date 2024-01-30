@@ -23,13 +23,13 @@ you'll also need [luaunit](https://github.com/bluebird75/luaunit) installed[^3].
 To run a XPL-script you navigate to the root of this repository and then execute the following command:
 
 ```bash
-./run report/interpreter.lua  [--trace] [--load_path <path/to/xpl/libdir> ...] --load <path/to/xpl/script>
+./run [--trace] [--load_path <path/to/xpl/libdir> ...] --load <path/to/xpl/script>
 
 ```
 
 For example to run the `report/mandelbrot.xpl` script you would write
 ```bash
-./run report/interpreter.lua  --load_path "report" --load report/mandelbrot.xpl > mandelbrot.ppm
+./run --load_path "report" --load report/mandelbrot.xpl > mandelbrot.ppm
 ```
 
 ### Note 1 
