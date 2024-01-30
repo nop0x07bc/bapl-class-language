@@ -108,7 +108,7 @@ end
 local function node(tag, ...)
     local labels = {...}
     return function (...)
-        node = {tag = tag}
+        local node = {tag = tag}
         local params = {...}
         for idx = 1, #labels do
             node[labels[idx]] = table.remove(params, 1)
@@ -131,6 +131,21 @@ local function processIndex(lst)
     local tree = lst[1] -- variable 
     for i = 2, #lst do
         tree = Tree:new({tag = "indexed", array = tree, index = lst[i]})
+    end
+    return tree
+end
+
+local function processIndexTable(lst)
+    local tree = lst[1] -- variable 
+    for i = 2, #lst do
+        local array_parts = {}
+        for j = 1,#lst[i] do
+            local c = string.byte(lst[i]:sub(j, j))
+            table.insert(array_parts, node("number", "value")(c))
+        end
+        local index = node("arrayconstr", "elements")(array_parts)
+
+        tree = Tree:new({tag = "indexed", array = tree, index = index})
     end
     return tree
 end
@@ -337,7 +352,8 @@ local grammar = lpeg.P{
     comparison  = lpeg.Cf(addend * lpeg.Cg(opC * addend)^0, processOpL), 
     logical     = lpeg.Cf(comparison * lpeg.Cg(T("and") * comparison)^0, processLogical("and")),
     expression  = lpeg.Cf(logical * lpeg.Cg(T("or") * logical)^0,processLogical("or")),       
-    lhs         = lpeg.Ct(variable * (T"[" * expression * T"]")^0) / processIndex
+    lhs         = lpeg.Ct(variable * (T"[" * expression * T"]")^1) / processIndex
+                + lpeg.Ct(variable * (T"." * identifier)^1) / processIndexTable
                 + variable,
     idassign    = identifier * (opAssign * expression)^-1 / node("idassign", "identifier", "expression"),
     keyval      = (expression * T":" * expression) / node("keyval", "key", "value"),
@@ -653,7 +669,7 @@ function Compiler:codeGenExp(ast)
             table.insert(path, string.char(c:node().value))
         end
         path = table.concat(path)
-        -- TODO(peter): check existance etc of module.
+        -- TODO(peter): check existance etc of module and report errors.
         local module_code = io.open(path, "r"):read("a")
         local compiler = Compiler:new()
         local closure = compiler:compile(module_code)
