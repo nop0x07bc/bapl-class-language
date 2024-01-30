@@ -43,5 +43,5 @@ In this section, discuss the future of your language / DSL, such as deployabilit
 List any references used in the development of your language besides this courses, including any books, papers, or online resources.
 
 
-[^1] In fact there might be bugs hidden deep inside that cause the computational equivalent of a complete "loss of control" (LOC). 
-[^2] As developed during the course of the [BaPL](https://classpert.com/classpertx/courses/building-a-programming-language/cohort) course. 
+[^1]: In fact there might be bugs hidden deep inside that cause the computational equivalent of a complete "loss of control" (LOC). 
+[^2]: As developed during the course of the [BaPL](https://classpert.com/classpertx/courses/building-a-programming-language/cohort) course. 
