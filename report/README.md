@@ -40,11 +40,37 @@ The `--trace` argument will show a _disassembly_ of the VM-instructions as it ru
 for debug purposes.
 
 
-
-
 ## Language Syntax
+The basic language syntax follows that of the Selene language but several additions have been made, especially when it
+comes to control structures and functions / lambda expressions. The examples of the grammar are given in _pseudo EBNF_
+together with examples.
 
-In this section, describe the overall syntax of your language.
+### Identifiers
+An identifier in XPL starts with a `letter` (`"A" | "B" ... "Z" | "a" ... "z"`) followed one ore more `letter`, `digit`
+or `_` symbols. 
+
+```
+identifer = letter , { letter | digit | "_" }
+```
+
+Examples of valid identifiers are `a`, `alpha`, `alpha3342`, `Beta_` and `Theta_2032_3`. Examples of invalid identifiers
+are `.x124`, `434dfx` and `ab ba`. 
+
+
+### Literals
+
+### Variables
+
+### Lambda expressions
+
+### Functions
+
+### Arrays and Hashmaps
+
+### Control Structures
+
+
+
 
 ## New Features/Changes
 
