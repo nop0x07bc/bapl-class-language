@@ -3,17 +3,17 @@
 --
 
 local lpeg    = require "lpeg"
-local inspect = require "inspect"
 local errors  = require "errors"
 local path    = require "elements/fs/path"
 
-local function remove_all_metatables(item, path)
-    if path[#path] ~= inspect.METATABLE then return item end
-end
-
-local function pt(t)
-    return inspect.inspect(t, {process = remove_all_metatables})
-end
+--local inspect = require "inspect"
+--local function remove_all_metatables(item, path)
+--    if path[#path] ~= inspect.METATABLE then return item end
+--end
+--
+--local function pt(t)
+--    return inspect.inspect(t, {process = remove_all_metatables})
+--end
 
 
 require "elements/containers/tree"

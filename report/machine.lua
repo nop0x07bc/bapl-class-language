@@ -8,7 +8,6 @@
 --
 --
 require 'elements/containers/stack'
-local inspect = require 'inspect'
 local errors = require 'errors'
 
 local ERROR_CODES = errors.ERROR_CODES
