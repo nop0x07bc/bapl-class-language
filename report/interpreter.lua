@@ -6,6 +6,7 @@ local compiler = require 'compiler'
 local machine = Machine:new()
 local trace = false
 local input = io.stdin
+local load_paths = {}
 
 
 
@@ -19,7 +20,7 @@ local input = io.stdin
 -- Note: For now we just compile an expression, run it through the virtual machine and return the the TOS. In future
 --       implementations we'll make this more elaborate.
 local function eval (str)
-    status, data = pcall(compiler.compile, str)
+    status, data = pcall(compiler.compile, str, load_paths)
     if not status then
         local inspect = require "inspect" 
         io.stderr:write(inspect.inspect(data))        
@@ -64,6 +65,7 @@ function parseArgs (arg)
     local result = {
         trace = false,
         input = io.stdin,
+        load_paths = {},
     }
     while pos <= #arg do
         if arg[pos] == "-t" or arg[pos] == "--trace" then
@@ -74,6 +76,13 @@ function parseArgs (arg)
                 pos = pos + 1
             else
                 io.stderr:write("Expected filename after option -l!", "\n")
+            end
+        elseif arg[pos] == "-p" or arg[pos] == "--load_path" then
+            if (pos + 1 <= #arg) then
+                table.insert(result.load_paths, arg[pos + 1])
+                pos = pos + 1
+            else
+                io.stderr:write("Expected directory after -p!", "\n")
             end
         end
         pos = pos + 1
@@ -88,6 +97,7 @@ end
 local result = parseArgs(arg)
 trace = result.trace
 input = result.input
+load_paths = result.load_paths
 
 if input == io.stdin then
     -- drop into line-by-line evaluating repl()

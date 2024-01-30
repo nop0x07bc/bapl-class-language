@@ -2,10 +2,10 @@
 -- Note: This compiler builds on the interpreter in lession-1/interpeter.lua
 --
 
-local lpeg = require "lpeg"
+local lpeg    = require "lpeg"
 local inspect = require "inspect"
-local errors = require "errors"
-
+local errors  = require "errors"
+local path    = require "elements/fs/path"
 
 local function remove_all_metatables(item, path)
     if path[#path] ~= inspect.METATABLE then return item end
@@ -19,6 +19,7 @@ end
 require "elements/containers/tree"
 require "elements/containers/stack"
 require "machine"
+
 
 local ERROR_CODES = errors.ERROR_CODES
 local make_error  = errors.make_error
@@ -412,13 +413,15 @@ grammar = grammar * -1
 local Compiler = {}
 Compiler.__index = Compiler
 
-function Compiler:new ()
+function Compiler:new (load_paths)
+    local load_paths = load_paths or {}
     local compiler = {
         env_ = Tree:new({parent = nil, vars = {}, freevars = {}, localvars = {}, declared = {}}), 
         code_ = {}, 
         break_ctx_ = Stack:new(),
         scope_ctx_ = Stack:new(),
         top_ = true,
+        load_paths_ = load_paths,
     }
     setmetatable(compiler, Compiler)
     return compiler
@@ -664,16 +667,31 @@ function Compiler:codeGenExp(ast)
             error(make_error(ERROR_CODES.UNEXPECTED_VALUE, {tag = node.tag}))
         end
     elseif node.tag == "require_" then
-        local path = {}
+        local script_path = {}
         for _, c in ipairs(node.path) do
-            table.insert(path, string.char(c:node().value))
+            table.insert(script_path, string.char(c:node().value))
         end
-        path = table.concat(path)
-        -- TODO(peter): check existance etc of module and report errors.
-        local module_code = io.open(path, "r"):read("a")
-        local compiler = Compiler:new()
+        script_path = table.concat(script_path)
+
+        local script_file = io.open(script_path, "r")
+        if not path.absolute(script_path) and script_file == nil then
+            for _, dirname in ipairs(self.load_paths_) do
+                script_file = io.open(path.join(dirname, script_path), "r")
+                if script_file then
+                    break
+                end
+            end
+        end
+
+        if script_file == nil then
+            error(make_error(ERROR_CODES.NO_SUCH_FILE, {path = script_path}))
+        end
+
+        local module_code = script_file:read("a")
+        local compiler = Compiler:new(self.load_paths_)
         local closure = compiler:compile(module_code)
-        
+        io.close(script_file)
+
         table.insert(self.code_, OPCODES.make(OPCODES.PUSH))
         table.insert(self.code_, 0)
         table.insert(self.code_, OPCODES.make(OPCODES.PUSH))
@@ -1405,8 +1423,9 @@ end
 --
 -- The compiler that translates the AST into machine instructions.
 --
-local function compile (str)
-    local compiler = Compiler:new()
+local function compile (str, load_paths)
+    local load_paths = load_paths or {}
+    local compiler = Compiler:new(load_paths)
     return compiler:compile(str)
 end
 
