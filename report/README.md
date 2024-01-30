@@ -16,6 +16,33 @@ The official logo for XPL is a rendition of the [Mandelbrot set](https://en.wiki
 rectangular area of the complex plane given by the two points $z_0 = -0.1475 - 0.92625i$ and $z_1 = 0.47 - 0.463125i$.
 This was the first useful program implemented in XPL so it seemed appropriate. 
 
+## Using the language
+The basic requirements for running the interpreter is an installation of Lua (>= 5.3) and LPeg. To run the tests suite
+you'll also need [luaunit](https://github.com/bluebird75/luaunit) installed[^3]. 
+
+To run a XPL-script you navigate to the root of this repository and then execute the following command:
+
+```bash
+LUA_PATH="report/?.lua;;" lua report/interpreter.lua  [--trace] [--load_path <path/to/xpl/libdir> ...] --load <path/to/xpl/script>
+
+```
+
+For example to run the `report/mandelbrot.xpl` script you would write
+```bash
+
+LUA_PATH="report/?.lua;;" lua report/interpreter.lua  --load_path "report" --load report/mandelbrot.xpl > mandelbrot.ppm
+```
+
+### Note 1 
+The `--load_path` argument specifys the path to search locations for XPL modules / libraries.
+
+### Note 2
+The `--trace` argument will show a _disassembly_ of the VM-instructions as it runs through the program. This is useful
+for debug purposes.
+
+
+
+
 ## Language Syntax
 
 In this section, describe the overall syntax of your language.
@@ -47,3 +74,4 @@ List any references used in the development of your language besides this course
 
 [^1]: In fact there might be bugs hidden deep inside that cause the computational equivalent of a complete "loss of control" (LOC). 
 [^2]: As developed during the course of the [BaPL](https://classpert.com/classpertx/courses/building-a-programming-language/cohort) course. 
+[^3]: On Ubuntu you can install this package using `sudo apt install lua-unit`.
