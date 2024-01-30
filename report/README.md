@@ -1,8 +1,8 @@
 # Final Project Report: eXperimental Programming Language (XPL)
 
-<div style="display:block;text-align: center;">
+<p style="display:block;text-align: center;">
     <img width="640" height="480" src="mandelbrot.png">
-</div>
+</p>
 
 The name for XPL is inspired by the _X-plane_ series of experimental aircrafts. Just as its aerodynamical "brothers"
 it's not a finished product nor intended for production use[^1]. XPL is, simply, a tool for exploring programming
