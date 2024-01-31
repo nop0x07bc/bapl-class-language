@@ -32,12 +32,14 @@ For example to run the `report/mandelbrot.xpl` script you would write
 ./run --load_path "report" --load report/mandelbrot.xpl > mandelbrot.ppm
 ```
 
-### Note 1 
-The `--load_path` argument specifys the path to search locations for XPL modules / libraries.
+### Load Paths
+The `--load_path` argument specifys the path to search locations for XPL modules / libraries. XPL scripts might source
+other XPL scripts and it needs to know where to find them. It will search the (possibly multiple) _load paths_ provided
+by the `--load_path` argument when sourcing dependent scripts (see the section on Modules below).
 
-### Note 2
+### Traces
 The `--trace` argument will show a _disassembly_ of the VM-instructions as it runs through the program. This is useful
-for debug purposes.
+for debug purposes but is very slow and interfers with output. Use with care.
 
 
 ## Language Syntax
@@ -100,6 +102,39 @@ Examples of invalid numeral literals are
 - `1.24e343.4`
 - `232.232.232`
 
+
+#### Array
+XPL supports array literals using the _array constructor_ syntax:
+
+```
+array = "{", {expression}, "}"
+```
+
+A array literal starts with a curly brace, then an optional sequence of expressions follow and the literal ends with a
+closing curly brace.
+
+Examples of arrays are:
+- `{1, 2, 3}`
+- `{(1 + 1), {3, "hello"}, lambda () { return 10; }}`
+- `{}`
+
+
+#### Hashmaps
+XPL support hashmap literals using a similar constructor expression as arrays. It uses the following syntax:
+
+```
+keyval  = expression , ":" , expression
+hashmap = "[" , {keyval} , "]"
+```
+
+That is a hashmap starts with a opening bracket, then an optional sequence of key value expressions follow (i.e pair of
+expressions seperated by a ":" character) and then it ends with a closing bracket.
+
+Examples of hashmaps:
+- `[1: "Peter", 2: "Sven"]`
+- `["Alpha": "a", "Beta": "b"]`
+- `[(16 * 7): lambda (x, y) { return x + y; }]`
+
 #### Strings
 XPL supports double quoted strings with escape sequences. A string starts with a double quote and ends with a _non_
 escaped double quote. Any byte sequence can be inserted by the means of the escape sequence `"\", "x" , hexdigit , hexdigit` 
@@ -127,20 +162,28 @@ Example of invalid strings are
 - `does not start with a double quote"`
 - `"forgot to escape "in this string"`
 
-
+##### String implementation
+String are implemented as XPL-arrays with integer values. This is a bit wasteful and complicates, for instance, string
+comparision (we actually have to compare strings element by element). Otoh I can use the same code-generation facilities
+that I use for array-literals, which makes it very easy to implement.
 
 ### Variables
+
+### Statements, Sequences and Blocks
+
+### Arrays and Hashmaps
 
 ### Lambda expressions
 
 ### Functions
 
-### Arrays and Hashmaps
-
 ### Control Structures
 
+### Modules
 
+### Comments
 
+### Other
 
 ## New Features/Changes
 
