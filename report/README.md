@@ -65,8 +65,69 @@ Examples of invalid identifiers are
 - `434dfx`,
 - `ab ba`. 
 
+#### Note 
+Some identifers are reserved for language constructs and can not be used in for example variable or function names.
+Please refer to `report/compiler.lua` for reserved words.
 
 ### Literals
+
+#### Numerals
+XPL supports numerals in either decimal or scientific notations in base 10. Integers can also be given using hexadecimal
+notation. A numeral can be prefixed with either a `+` or `-` symbol[^4].
+
+```
+sign     = "+" | "-"
+digit    = "0" | "1" | ... | "9"
+posint   = digit , {digit}
+integer  = [sign] , posint
+hexdigit = digit | "a" | "b" | ... | "f" | "A" | ... | "F"
+hexint   = [sign] , "0" , ("x" | "X") , hexdigit , {hexdigit} 
+decimal  = integer , "." , posint | [sign] , "." , posint | integer , "." | integer
+numeral  = hexint | decimal | decimal , ("e" | "E") , integer
+```
+
+Examples of valid numeral literals are
+- `1`
+- `202423`
+- `0xdeadc0de`
+- `123.3432`
+- `123.2e10`
+- `-123.2E10`
+- `+0x43f`
+
+Examples of invalid numeral literals are
+- `0x534.5`
+- `1.24e343.4`
+- `232.232.232`
+
+#### Strings
+XPL supports double quoted strings with escape sequences. A string starts with a double quote and ends with a _non_
+escaped double quote. Any byte sequence can be inserted by the means of the escape sequence `"\", "x" , hexdigit , hexdigit` 
+(e.g `\x0a` for a linefeed symbol).
+
+```
+hexescape  = "\" , "x" , hexdigit , hexdigit
+lfescape   = "\" , "n"
+crescape   = "\" , "r"
+tabescape  = "\" , "t"
+quotescape = "\" , """
+backescape = "\" , "\"
+char       = <printable character>
+string     = """ , {hexescape | lfescape | crescape | tabescape | quotescape | backescape | char} , """
+```
+
+Example of valid strings are
+- `"This's an example of a valid string."`
+- `" Hello\n\tBrave\x0aNew World!!!"`
+- `"\"Quoted string\""`
+
+Example of invalid strings are
+- `"does not end with a double quote`
+- `'single quotes are not strings'`
+- `does not start with a double quote"`
+- `"forgot to escape "in this string"`
+
+
 
 ### Variables
 
@@ -109,3 +170,5 @@ List any references used in the development of your language besides this course
 [^1]: In fact there might be bugs hidden deep inside that cause the computational equivalent of a complete "loss of control" (LOC). 
 [^2]: As developed during the course of the [BaPL](https://classpert.com/classpertx/courses/building-a-programming-language/cohort) course. 
 [^3]: On Ubuntu you can install this package using `sudo apt install lua-unit`.
+[^4]: This is somewhat redundant since we also have the unary operator `-`, but I decided to keep it since it was part
+    of an exercise.
