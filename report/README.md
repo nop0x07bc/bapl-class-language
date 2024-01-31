@@ -237,15 +237,48 @@ function its_ok_to_use_x(y)
 
 ```
 
-A variable is _always_ local to it's current closure / scope. There are no globally mutable variables in XPL.
+A variable is _always_ local to it's current closure. There are no globally mutable variables in XPL. Closures will
+copy _free variables_ by value.
 
 ### Statements, Sequences and Blocks
+A valid XPL program consists of _sequences_ of _statements_. A statement is either a _block_ (encompassing
+control structures) or a set of special statements (assignment, return, break etc...):
+
+
+```
+program   = space * sequence
+
+sequence  = block , [sequence]
+          | statement , [";" , sequence]
+
+block     = ifstmt
+          | switchstmt
+          | for1stmt
+          | for2stmt
+          | whilestmt
+          | functionstmt
+          | "{" , sequence , "}"
+
+statement = block
+          | "return" , expression
+          | "break"
+          | identifier , args
+          | ":" , expression
+          | "@" , expression
+          | "read" , "(" , expression , "," , expression , ")"
+          | "write" , "(" , expression , "," , expression , ")"
+          | declaration
+          | assignment
+```
+
+The control structures will be convered in other sections.
+
 
 ### Arrays and Hashmaps
 
-### Lambda expressions
 
-### Functions
+
+### Lambda expressions and Functions
 
 ### Control Structures
 
