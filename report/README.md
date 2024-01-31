@@ -84,7 +84,7 @@ posint   = digit , {digit}
 integer  = [sign] , posint
 hexdigit = digit | "a" | "b" | ... | "f" | "A" | ... | "F"
 hexint   = [sign] , "0" , ("x" | "X") , hexdigit , {hexdigit} 
-decimal  = integer , "." , posint | [sign] , "." , posint | integer , "." | integer
+decimal  = integer , ["."] , [posint] | [sign] , "." , posint
 numeral  = hexint | decimal | decimal , ("e" | "E") , integer
 ```
 
@@ -168,6 +168,76 @@ comparision (we actually have to compare strings element by element). Otoh I can
 that I use for array-literals, which makes it very easy to implement.
 
 ### Variables
+Variables in XPL are symbolic names for values (closures, arrays, hashmaps, strings, null and numbers). A variable is
+named by an _identifier_ (excluding reserved words) and must be declared before first use, using a variable
+_declaration_ statement:
+
+```
+declaration = "variable" , identifier [= , expression]
+
+```
+Examples of valid variable declarations are:
+
+```
+variable my_var; # declares my_var and initiates it to "null"
+variable my_other_var = 234 * 25; # variable with initialization.
+
+```
+
+Once a variable has been declared it can be used in any expression:
+
+```
+variable v = 1.54;
+variable m = 99.0;
+variable W = m * v^2 / 2;
+```
+
+Since XPL is dynamically typed it's up to the user to guarantee that the expressions involving variables (or any other
+values) make sense. Trying to multiply a closure with a number will lead to a runtime error!
+
+#### Assignment
+A variable is updated via an _assignment_ statement. For a assignment to be valid the variable first has to be declared
+(semantic check in compiler). The assigment statement takes the following form:
+
+```
+lhs        = identifier , "[" , expression , "]" , {"[" , expression , "]"} 
+           | identifier , "." , expression , {"." , expression}
+           | identifier
+assignment = lhs , "=" , expression
+```
+
+Note that this grammar also includes array / hashmap assignment through indices. 
+
+
+#### Variables and scope
+It is an error to declare the same variable more than once in the same _scope_ (e.g the same block or closure). However
+you can declare a variable with the same name in a different block or closure. Examples
+
+Invalid re-declaration.
+```
+variable x;
+variable x = 10; # Error! 
+
+```
+
+Valid re-declarations.
+```
+variable x = 10;
+{
+    # A block introduces a new scope.
+    variable x = 20; # Here 'x' refers to a differnt storage cell.
+
+}
+
+function its_ok_to_use_x(y)
+{
+    variable x = y;
+    # ...
+}
+
+```
+
+A variable is _always_ local to it's current closure / scope. There are no globally mutable variables in XPL.
 
 ### Statements, Sequences and Blocks
 
@@ -213,5 +283,4 @@ List any references used in the development of your language besides this course
 [^1]: In fact there might be bugs hidden deep inside that cause the computational equivalent of a complete "loss of control" (LOC). 
 [^2]: As developed during the course of the [BaPL](https://classpert.com/classpertx/courses/building-a-programming-language/cohort) course. 
 [^3]: On Ubuntu you can install this package using `sudo apt install lua-unit`.
-[^4]: This is somewhat redundant since we also have the unary operator `-`, but I decided to keep it since it was part
-    of an exercise.
+[^4]: This is somewhat redundant since we also have the unary operator `-`, but I decided to keep it since it was part of an exercise.

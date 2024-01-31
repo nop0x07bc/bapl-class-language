@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+export LUA_PATH="report/?.lua;;"
+
+lua report/lesson_test.lua
