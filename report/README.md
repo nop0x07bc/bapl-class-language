@@ -277,7 +277,7 @@ expression = logical { "or" , logical }
 ```
 
 An expression is not a valid XPL-program on it's own. It needs to be associated to a statement. From an implementation
-perspective one can think of expressions as something that pushes a new value onto the stack of the VM.
+perspective one can think of expressions as something that pushes a new value onto the stack of the VM.[^5]
 
 #### Operators
 XPL suppor the following operators
@@ -337,9 +337,8 @@ statement = block
 The control structures will be convered in other sections.
 
 ### Arrays and Hashmaps
-XPL has support for arrays and hasmaps / tables (in the reference implementation these are both realized via Lua
-tables). You can create them using the array or hashmap literal as described in the "literals" section. You can also
-create arrays using the `new` keyword (see expressions):
+XPL has support for arrays and hasmaps / tables[^6]. You can create them using the array or hashmap literal as described
+in the "literals" section. You can also create arrays using the `new` keyword (see expressions):
 
 ```
 "new" "[" , expression , "]" , {"[" , expression , "]"}
@@ -369,10 +368,223 @@ dotop  = identifier , "." , expression , {"." , expression}
 
 ```
 ### Lambda expressions and Functions
+A lambda expression creates a callable closure. A closure consists of an _environment_ with _parameters_, _local_ and
+_free_ variables. Upon creation of a closure all _free_ variables are copied into the closure environment. When calling
+a closure the formal _parameters_ are copied into the closure environment.
 
+A lambda expression has the following syntax:
 
+```
+idassign  = identifier , ["=", expression]
+optparams = "(" , space , ")" | "(", idassign , {"," , idassign} , ")"
+lambda = "lambda" , optparams , block
+```
+
+Examples of lambda expressions are:
+```
+variable a = lambda () { variable c = 0; return c; };
+variable b = lambda (x, y, z) { return x + y + a(); };
+```
+
+Lambda expression have a central role in XPL and many other language constructs builds on these, most importantly
+functions, but also modules and iterators. 
+
+Function statements are syntactic sugar around lambda expressions (we will go into implementation details in another
+section) and variables. It has the following syntax:
+
+```
+functions = "function" , identifier , optparams , block {, "and" , identifier , optparams , block}
+```
+
+Examples of function statements:
+```
+function iterator (start, stop, step = 1)
+{
+    variable current = start;
+    variable should_stop = lambda (current)
+    {
+        if (start > stop and current < stop)
+        {
+            return 1;
+        }
+        elseif (start <= stop and current > stop)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    };
+    return lambda ()
+    {
+        if (should_stop(current))
+        {
+            return null;
+        }
+        else
+        {
+            variable temp = current;
+            current = current + step;
+            return temp;
+        }
+    }
+}
+```
+#### Calls
+A function / lambda expression / closure can be called using the following syntax:
+
+```
+args = "(" , space , ")" | "(" , expression , {"," , expression} , ")"
+call = (lhs | "(" , expression , ")") , args
+```
+
+Examples
+```
+variable it = iterator(1, 20, 2);
+
+@ (lambda () { return {1, 2, 3}; })();
+
+```
 
 ### Control Structures
+
+#### If-statement
+The grammar for if statment is as follows:
+
+```
+ifstmt = "if" , expression , block , [ifrest | "else" , block]
+ifrest = "elseif" , expression , block , [ifrest | 'else' , block]
+```
+
+Valid if statments:
+```
+variable x = 20;
+## without else
+if x > 15
+{
+    @ x;
+}
+
+## with else
+if (x > 15)
+{
+    @ x;
+}
+else
+{
+    @ 0;
+}
+
+## with elseif
+if (x > 15)
+{
+    @ x;
+}
+elseif (x > 10)
+{
+    @ x - 10;
+}
+elseif (x > 5)
+{
+    @ -x;
+}
+else
+{
+    # do nothing
+}
+
+```
+
+Note that a `else` must always come last and like `elseif` cannot start a if-statement.
+#### Break-statement
+A break statement is used for escaping loops or switch-cases early. 
+
+```
+break = "break"
+```
+
+The break statement is scoped so that if there are nested loop or switch statements the innermost `break` will only
+escape the innermost loop or switch. 
+
+#### Switch-statement
+The syntax for the switch-statement closely follows that of C. The XPL grammar for switch statements is
+```
+switch = "switch" , expression , "{" , {"case" , expression , ":" , block } , ["default" , ":" , block] , "}"
+```
+
+If a case-block does not contain a `break` or `return` statement we will fall-through to the next case.
+
+Examples of switch-cases:
+
+```
+variable x = 10;
+switch (x)
+{
+    case 1:
+    {
+        write(stdout, "Case one\n");
+        break;
+    }
+    case 10:
+    {
+        write(stdout, "Case ten, will fall through!\n");
+    }
+    case 11:
+    {
+        write(stdout, "Case eleven\n");
+        break;
+    }
+    default:
+    {
+        write(stdout, "The default case\n");
+    }
+}
+```
+#### For statement
+There are 2 different kind of _for_-loops in XPL. One is the _C-styled_ for
+```
+for1stmt = "for" , [identifier , "=" , expression ] , ";"
+                 , [expression] , ";"
+                 , [assignment] , ";"
+                 , block
+```
+
+and the other is the _iterator_ for
+
+```
+for2stmt = "for" , identifier , "in" , expression , block
+```
+
+In the _iterator_ based for the `expression` should return a _thunk_[^7] that returns `null` when iteration is complete. 
+
+
+Examples of for-statements:
+
+```
+# x local to for-loop block
+for x = 10; x < 20; x = x + 3
+{
+    @ x;
+}
+
+# x outside for-loop block
+variable x = 10;
+for ; x < 20; x = x + 3
+{
+    @ x; 
+}
+
+for x in iterator(0, 100, 25)
+{
+    @ x;
+}
+
+```
+
+#### While-statement
+
+
 
 ### Modules
 
@@ -409,3 +621,7 @@ List any references used in the development of your language besides this course
 [^2]: As developed during the course of the [BaPL](https://classpert.com/classpertx/courses/building-a-programming-language/cohort) course. 
 [^3]: On Ubuntu you can install this package using `sudo apt install lua-unit`.
 [^4]: This is somewhat redundant since we also have the unary operator `-`, but I decided to keep it since it was part of an exercise.
+[^5]: Following the same line of thinking, a statement is then something that consumes that value pushed onto the stack.
+    Returning it, or printing it etc.
+[^6]: In the "reference implementation" both XPL arrays and tables are realized by Lua tables. 
+[^7]: I.e a argument-less closure / lambda expression.
