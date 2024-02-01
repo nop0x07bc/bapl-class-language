@@ -168,7 +168,7 @@ comparision (we actually have to compare strings element by element). Otoh I can
 that I use for array-literals, which makes it very easy to implement.
 
 ### Variables
-Variables in XPL are symbolic names for values (closures, arrays, hashmaps, strings, null and numbers). A variable is
+Variables in XPL are symbolic names for values (closures, arrays, hashmaps, strings, files, null and numbers). A variable is
 named by an _identifier_ (excluding reserved words) and must be declared before first use, using a variable
 _declaration_ statement:
 
@@ -240,6 +240,69 @@ function its_ok_to_use_x(y)
 A variable is _always_ local to it's current closure. There are no globally mutable variables in XPL. Closures will
 copy _free variables_ by value.
 
+### Expressions
+An expression is anything that can be on the rhs of an assignment or operated on by a select set of _statments_ (e.g return,
+print (`@`), read, write, etc...). It includes literals, arithmetical operations on expressions, logical operartions,
+file constants, null, array / hashmap indexing, lambda expressions, function calls and module inclusion.
+
+```
+primary    = (lhs | "(" , expression , ")") , args
+           | "lambda" , optparams , block
+           | "new" "[" , expression , "]" , {"[" , expression , "]"}
+           | array
+           | hashmap
+           | numeral
+           | "null"
+           | "len" , expression
+           | "(" , expression , ")"
+           | ("stdin" | "stdout" | "stderr")
+           | string
+           | lhs
+           | "require" , string
+
+exponent   = primary , "^" , primary
+
+negation   = {("-" | "!") , exponent
+
+term       = negation , {("*" | "/" | "%") , negation}
+
+addend     = term , {("+" | "-") , term}
+
+comparison = addend , {("<" | ">" | "<=" | ">=" | "==" | "!=") , addend}
+
+logical    = comparison { "and" , comparison }
+
+expression = logical { "or" , logical }
+
+```
+
+An expression is not a valid XPL-program on it's own. It needs to be associated to a statement. From an implementation
+perspective one can think of expressions as something that pushes a new value onto the stack of the VM.
+
+#### Operators
+XPL suppor the following operators
+
+| Operator | Precendence | Arity | Comment                    |
+|----------|--------------|-------|-----------------------------|
+|    ^     |      1      |   1   | exponent, right associative|
+|    -     |      2      |   1   | additive negation          |
+|    !     |      2      |   1   | logical negation           |
+|    *     |      3      |   2   | multiplication             |
+|    /     |      3      |   2   | division                   |
+|    %     |      3      |   2   | modulus                    |
+|    +     |      4      |   2   | addition                   |
+|    -     |      4      |   2   | subtraction                |
+|    >     |      5      |   2   | greater then               |
+|    >=    |      5      |   2   | greater or equal to        |
+|    <     |      5      |   2   | less then                  |
+|    >=    |      5      |   2   | less or equal to           |
+|    ==    |      5      |   2   | equal to                   |
+|    !=    |      5      |   2   | not equal to               |
+|    and   |      6      |   2   | logical and                |
+|    or    |      7      |   2   | logical or                 |
+
+
+
 ### Statements, Sequences and Blocks
 A valid XPL program consists of _sequences_ of _statements_. A statement is either a _block_ (encompassing
 control structures) or a set of special statements (assignment, return, break etc...):
@@ -273,12 +336,41 @@ statement = block
 
 The control structures will be convered in other sections.
 
-
 ### Arrays and Hashmaps
+XPL has support for arrays and hasmaps / tables (in the reference implementation these are both realized via Lua
+tables). You can create them using the array or hashmap literal as described in the "literals" section. You can also
+create arrays using the `new` keyword (see expressions):
 
+```
+"new" "[" , expression , "]" , {"[" , expression , "]"}
+```
 
+Examples of array and hashtable creation:
 
+```
+variable a = new [100][100]; # an array consisting of 100 elements, each being an array of 100 elements.
+variable b = {1, 2, 3};      # an array containing the value 1, 2, 3.
+variable h = [];             # an empty table.
+variable i = ["test": 1, 
+              "test2": 2]    # an table with string keys "test" and "test2" and values 1, 2 respectively.
+
+```
+
+To access into an array or table you can use the index operator `[]`:
+
+```
+indexop = identifier , "[" , expression , "]" , {"[" , expression , "]"} 
+```
+
+For tables (with string keys) you can also use the `.` operator:
+
+```
+dotop  = identifier , "." , expression , {"." , expression}
+
+```
 ### Lambda expressions and Functions
+
+
 
 ### Control Structures
 
