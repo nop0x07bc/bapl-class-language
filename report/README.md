@@ -935,15 +935,9 @@ larger change and perhaps warrants a successor language _YPL_.
 
 | Assessment category   | Comments                                              | Score |
 |-----------------------|-------------------------------------------------------|-------|
-| Language Completeness | I've incorporated all exercises with one or two exceptions where they clash with my intended
-language design. In those places I've added explanations on how to solve it. Abscense of value, hashmaps, switch-case
-and strings are incorporated into the language. I think closures as a first class object was quite a novel addition. I
-deduct some points to account for the missing exercise feature that clashed with my intended design | 2.5 |
-| Code Quality & Report | The code needs refactoring and more comments. The overall organisation is ok. Error messages
-are ok (but not excellent). The report follows the template fairly well. | 1.8 |
-| Originality & Scope   | I think the implementation is quite distinct from Selene, the syntax has extensions to Selene
-language but the base is similar. The VM is quite different from the Selene implementation. XPL has enough power to
-solve real-world problems but execution is quite slow. | 2.2 |
+| Language Completeness | I've incorporated all exercises with one or two exceptions where they clash with my intended language design. In those places I've added explanations on how to solve it. Abscense of value, hashmaps, switch-case and strings are incorporated into the language. I think closures as a first class object was quite a novel addition. I deduct some points to account for the missing exercise feature that clashed with my intended design | 2.5 |
+| Code Quality & Report | The code needs refactoring and more comments. The overall organisation is ok. Error messages are ok (but not excellent). The report follows the template fairly well. | 1.8 |
+| Originality & Scope   | I think the implementation is quite distinct from Selene, the syntax has extensions to Selene language but the base is similar. The VM is quite different from the Selene implementation. XPL has enough power to solve real-world problems but execution is quite slow. | 2.2 |
 
 ## Footnotes
 
