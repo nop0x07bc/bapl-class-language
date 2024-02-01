@@ -370,7 +370,7 @@ dotop  = identifier , "." , expression , {"." , expression}
 ### Lambda expressions and Functions
 A lambda expression creates a callable closure. A closure consists of an _environment_ with _parameters_, _local_ and
 _free_ variables. Upon creation of a closure all _free_ variables are copied into the closure environment. When calling
-a closure the formal _parameters_ are copied into the closure environment.
+a closure the formal _parameters_ are copied into the closure environment from the stack. 
 
 A lambda expression has the following syntax:
 
@@ -396,7 +396,46 @@ section) and variables. It has the following syntax:
 functions = "function" , identifier , optparams , block {, "and" , identifier , optparams , block}
 ```
 
-Examples of function statements:
+Mutually recursive functions are defined in one statement as in the following example:
+
+```
+variable false = 0;
+variable true  = 1;
+function odd (n)
+{
+    if (n < 0)
+    {
+        return odd(-n);
+    }
+    elseif (n == 0)
+    {
+        return false;
+    }
+    else
+    {
+        return even(n - 1);
+    }
+}
+and even(n)
+{
+    if (n < 0)
+    {
+        return even(-n);
+    }
+    elseif (n == 0)
+    {
+        return true;
+    }
+    else
+    {
+        return odd(n - 1);
+    }
+
+}
+```
+
+This syntax is inspired by OCamls `let rec fun1 = ... and fun 2 = ...` syntax[^7]. Here is another example of a function
+statement show how closures captures freevariables of the surrouding environment:
 ```
 function iterator (start, stop, step = 1)
 {
@@ -447,6 +486,9 @@ variable it = iterator(1, 20, 2);
 
 ```
 
+Argument expressions are evaluated in order and pushed onto the stack. The closure then copies the params into the data
+section reserved for the formal parameters.
+
 ### Control Structures
 
 #### If-statement
@@ -496,7 +538,7 @@ else
 
 ```
 
-Note that a `else` must always come last and like `elseif` cannot start a if-statement.
+Note that a `else` must always come last and `elseif` cannot start a if-statement.
 #### Break-statement
 A break statement is used for escaping loops or switch-cases early. 
 
@@ -506,6 +548,18 @@ break = "break"
 
 The break statement is scoped so that if there are nested loop or switch statements the innermost `break` will only
 escape the innermost loop or switch. 
+
+#### Return-statement
+A return statement returns control to the calling closure. In case of the TOP-closure execution in the VM is halted. A
+return statement can take an optional argument that will be pushed onto the stack. If no argument is provided `null` is
+push to the stack.
+
+Syntax:
+
+```
+return = "return" , [expression]
+```
+
 
 #### Switch-statement
 The syntax for the switch-statement closely follows that of C. The XPL grammar for switch statements is
@@ -556,7 +610,7 @@ and the other is the _iterator_ for
 for2stmt = "for" , identifier , "in" , expression , block
 ```
 
-In the _iterator_ based for the `expression` should return a _thunk_[^7] that returns `null` when iteration is complete. 
+In the _iterator_ for-loop the `expression` should return a _thunk_[^8] that returns `null` when iteration is complete. 
 
 
 Examples of for-statements:
@@ -583,14 +637,81 @@ for x in iterator(0, 100, 25)
 ```
 
 #### While-statement
+While statements has the following syntax:
 
+```
+whilestmt = "while" , expression , block
+```
 
+Example:
+
+```
+variable x = 10;
+while (x < 100)
+{
+    @ x;
+    if ( x < -3)
+    {
+        break; # break out of loop early.
+    }
+
+    x = x - 1;
+}
+
+```
 
 ### Modules
+A module is a closure defined in another file. A module can be loaded and executed by the _require_ expression:
+
+```
+require = "require" , string
+```
+
+Modules are essentially handled as _thunk_ and executed as soon as they are loaded. Generally a module would return a
+hashtable constisting of functions and values. 
+
+The search paths for modules are passed to the compiler via the constructor. If no constructor is passed relative paths
+are resolved relative to the CWD.
+
+Example:
+```
+variable strings = require "std/strings.xpl"; 
+```
+
+This executes the closure defined in the script `std/strings.xpl` and puts the result in the variable _strings_. 
 
 ### Comments
+There are two kinds of comments in the language: Line comments and Block comments. The grammar for comments is actually
+baked into the grammar for white spaces (as in the case of Selene):
 
+```
+comment     = "#{" , block_rest | "#\n" | "#" * line_rest_0
+block_rest  = "#}" | <any-character> , block_rest
+line_rest_0 = (<any-character> - "{") , line_rest_1
+line_rest_1 = (<any-character> - "\n") , line_rest_1 + "\n"
+space       = {(" " | "\n" | "\t") + comment}
+```
+
+Example of comments:
+```
+## Line comment
+
+variable y; # another line comment.
+
+#{
+
+#{
+    # comment nested 
+    This is still a comment 
+#}
+
+variable #{ in line comment #} x = 10;
+
+```
 ### Other
+
+#### Return and break
+
 
 ## New Features/Changes
 
@@ -624,4 +745,5 @@ List any references used in the development of your language besides this course
 [^5]: Following the same line of thinking, a statement is then something that consumes that value pushed onto the stack.
     Returning it, or printing it etc.
 [^6]: In the "reference implementation" both XPL arrays and tables are realized by Lua tables. 
-[^7]: I.e a argument-less closure / lambda expression.
+[^7]: [Recursive definition of values](https://v2.ocaml.org/manual/letrecvalues.html)
+[^8]: I.e a argument-less closure / lambda expression.
