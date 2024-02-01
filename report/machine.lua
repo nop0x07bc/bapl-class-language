@@ -76,12 +76,24 @@ Machine.OPCODES.WRITE     = 0xF6 -- Pop 2 elements TOS(0) numbers (bytes) to wri
                                  -- file object. Write byte(s) to fileobject.
 Machine.OPCODES.READ      = 0xF7 -- Pop 2 elements TOS(0) array and TOS(1) file. Read len(array) bytes from TOS(1).
 
-function toBool (a)
+local function toBool (a)
     return (a ~= 0)
 end
 
-function fromBool (a)
+local function fromBool (a)
     return a and 1 or 0
+end
+
+local function compare (a, b)
+    if type(a) == "number" and type(b) == "number" then
+        return a == b
+    elseif type(a) == "number" then
+        return false
+    elseif type(a) == "table" and a.tag == "null" and type(b) == "table" and b.tag == "null" then
+        return true;
+    else
+        return false;
+    end
 end
 
 Machine.OPCODES.BINOP_LOOKUP = {
@@ -91,7 +103,7 @@ Machine.OPCODES.BINOP_LOOKUP = {
     [Machine.OPCODES.DIV]  = function (a, b) return a / b end,
     [Machine.OPCODES.REM]  = function (a, b) return a % b end,
     [Machine.OPCODES.EXP]  = function (a, b) return a ^ b end,
-    [Machine.OPCODES.EQ]   = function (a, b) return fromBool(a == b) end,
+    [Machine.OPCODES.EQ]   = function (a, b) return fromBool(compare(a, b)) end,
     [Machine.OPCODES.NEQ]  = function (a, b) return fromBool(a ~= b) end,
     [Machine.OPCODES.LT]   = function (a, b) return fromBool(a < b) end,
     [Machine.OPCODES.LE]   = function (a, b) return fromBool(a <= b) end,

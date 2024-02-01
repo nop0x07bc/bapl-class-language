@@ -2,4 +2,4 @@
 
 export LUA_PATH="report/?.lua;;"
 
-lua report/lesson_test.lua
+lua report/project_tests.lua 

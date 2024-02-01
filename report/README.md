@@ -29,7 +29,14 @@ To run a XPL-script you navigate to the root of this repository and then execute
 
 For example to run the `report/mandelbrot.xpl` script you would write
 ```bash
-./run --load_path "report" --load report/mandelbrot.xpl > mandelbrot.ppm
+./run --load_path "report" --load report/examples/mandelbrot.xpl > mandelbrot.ppm
+```
+
+#### Running tests
+There are several tests defined in `report/project_tests.lua` you can run them using the following script.
+
+```
+./run-tests
 ```
 
 ### Load Paths
@@ -768,7 +775,7 @@ section refers to. Any code we compile will result in a closure. The first closu
 
 When we _create_ a closure (during run-time) there are several things happening:
 
-1. A (XPL) array is created large enought o hold hold all data in the closure data-segment.
+1. A (XPL) array is created large enough to hold all data in the closure data-segment.
 2. All variables that are _free_ inside the closure are copied into the appropriate location in the array.
 3. We replace the data array in the  closure primitive (essentially a closure data structure with code but an unfilled array) 
    that currenly resides on the top of the stack, by means of the `CLOSURE` instruction.
@@ -815,10 +822,10 @@ variable fac = lambda (n)
 }
 
 ```
-This program will fail to compile, since fac is not know at the moment the lambda is being constructed. We cannot refer
+This program will fail to compile, since `fac` is not know at the moment the lambda is being constructed. We cannot refer
 to `fac` inside the closure. Even if we try to remedy this by first defining the variable `fac` as `null` and then
 setting it to the lambda expression it will fail (with the current implementation of the compiler) since the _value_ of
-the _free_ variable `fac` that will be copied into the closure is at the time of copyign `null`!
+the _free_ variable `fac` that will be copied into the closure is at the time of copying `null`!
 
 However if we transform the above expression as such
 
@@ -859,18 +866,56 @@ The code generation for the `function` statement does the following:
 4. Generates code for all new nodes.
 
 
-
-
-
 This approach also extends to the `function ... and ... [and ...]` syntax quite easily (we just do this generation for
 several functions at once).
 
 
-In this section, describe the new features or changes that you have added to the programming language. This should include:
+### Break
+_XPL_ allows you to break-out of loops and switch-case statements early, breakable control-statements can be nested and
+`break` will only escape the inner most context. 
 
-* Detailed explanation of each feature/change
-* Examples of how they can be used
-* Any trade-offs or limitations you are aware of
+Implementation-wise this is achieved by keeping a _stack_ of break "contexts" in the compiler. When ever we enter code
+generation for a block that we can break-out of a new _break context_ is created and pushed to the break context stack.
+
+When we generate code for a `break` statement we check that break context _stack_ is non empty. If not we insert a
+sentinel for a branch instruction and then add the code location to the TOS break context.
+
+When we exit the block that allows break-out we pop the break context stack and then insert a non-coditional branch to
+the the next code location for all code-references in the break context.
+
+
+### On the Stack VM
+The Stack VM is isolated form the compiler. It only know how to execute program / closure code. You can find the most
+recent implementation in `report/machine.lua`. 
+
+All instructions are encoded as 64-bit integers. The most significant 8-bits holds the instruction "variant" and lower
+56-bits can carry a payload. A good example of this is the branch instructions. 
+
+Take for example the branch if TOS is 0 `BZ` instruction. It is encoded as
+```
+Bit
+64      56                                              0
++-------+-----------------------------------------------+
+| 0xA3  |  0x7fffffff + <signed 32-bit jump offset>     |
++-------+-----------------------------------------------+
+```
+When we decode the instruction we look at the top-most 8bits for the variant and then extract and decode the payload.
+This allows us to make branching a little bit more compact.
+
+Each instruction variant has it's own elseif-case in the main `step` function. There the _data_-stack and / or _code_-stack
+are manipulated and the _pc_ (when appropriate) is updated. One could argue that the step function could be made more
+compact by moving out some of the operations (e.g pc manipulation) into a common step. But I prefer all state
+manipulation to be explicitly done at `elseif` branch of the instruction.
+
+### Additional extension and comments
+_XPL_ has `null` (abscense of value), hashmaps, switch-case statements and strings. The implementation was quite
+straight forward. Please refer to example code and the compiler / machine implementation for details. Some details where
+given in the syntax section.
+
+All non-numerical values in _XPL_ are implemented as tables with a `tag` that identifies the type. When going for a VM
+interpreter in written in _C++_ all _types_ probably has be tagged (as in a struct with a tag field) since C++ doesn't
+really support run-time type information.
+
 
 ## Future
 Future improvements will include a `C++` implementation of the compiler and stack-machine. The major blocker for this
@@ -888,8 +933,17 @@ larger change and perhaps warrants a successor language _YPL_.
 
 ## Self assessment
 
-* Self assessment of your project: for each criteria described on the final project specs, choose a score (1, 2, 3) and explain your reason for the score in 1-2 sentences.
-* Have you gone beyond the base requirements? How so?
+| Assessment category   | Comments                                              | Score |
+|-----------------------|-------------------------------------------------------|-------|
+| Language Completeness | I've incorporated all exercises with one or two exceptions where they clash with my intended
+language design. In those places I've added explanations on how to solve it. Abscense of value, hashmaps, switch-case
+and strings are incorporated into the language. I think closures as a first class object was quite a novel addition. I
+deduct some points to account for the missing exercise feature that clashed with my intended design | 2.5 |
+| Code Quality & Report | The code needs refactoring and more comments. The overall organisation is ok. Error messages
+are ok (but not excellent). The report follows the template fairly well. | 1.8 |
+| Originality & Scope   | I think the implementation is quite distinct from Selene, the syntax has extensions to Selene
+language but the base is similar. The VM is quite different from the Selene implementation. XPL has enough power to
+solve real-world problems but execution is quite slow. | 2.2 |
 
 ## Footnotes
 

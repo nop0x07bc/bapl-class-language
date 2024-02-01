@@ -4,6 +4,11 @@ require "machine"
 local compiler = require "compiler"
 local lu = require "luaunit"
 local errors = require "errors"
+local trace = false
+
+if arg[1] == "--trace" then
+    trace = true
+end
 
 -- Make sure we are not regressing due to modifications.
 TestMachine = {}
@@ -15,16 +20,16 @@ TestMachine = {}
         end
 
         local machine = Machine:new(TestIO)
-        machine:setTrace(true) -- print trace of execution to stdout
+        machine:setTrace(trace) -- print trace of execution to stdout
         local function eval(str)
-            local program = compiler.compile(str)
+            local program = compiler.compile(str, {"report/examples"})
             machine:load(program)
             machine:run()
             return machine:tos()
         end
 
         local function eval_print(str)
-            local program = compiler.compile(str)
+            local program = compiler.compile(str, {"report/examples"})
             TestIO.prints = {}
             machine:load(program)
             machine:run()
@@ -216,7 +221,15 @@ TestMachine = {}
         lu.assertEquals(status, false)
         lu.assertEquals(data.code, errors.ERROR_CODES.CLOSURE_ARITY)
 
-        test_file = io.open("lesson-8/test.xpl", "r"):read("a")
+        test_file = io.open("report/examples/test.xpl", "r"):read("a")
+        status, data = pcall(eval, test_file)
+        lu.assertEquals(status, true)
+
+        test_file = io.open("report/examples/rec.xpl", "r"):read("a")
+        status, data = pcall(eval, test_file)
+        lu.assertEquals(status, true)
+
+        test_file = io.open("report/examples/it.xpl", "r"):read("a")
         status, data = pcall(eval, test_file)
         lu.assertEquals(status, true)
     end
