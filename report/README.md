@@ -4,7 +4,7 @@
     <img width="640" height="480" src="assets/mandelbrot.png">
 </p>
 
-The name for XPL is inspired by the _X-plane_ series of experimental aircrafts. Just as its aerodynamical "brothers"
+The name for XPL is inspired by the _X-plane_ series of experimental aircraft. Just as its aerodynamical "brothers"
 it's not a finished product nor intended for production use[^1]. XPL is, simply, a tool for exploring programming
 language design and implementation. 
 
@@ -40,13 +40,13 @@ There are several tests defined in `report/project_tests.lua` you can run them u
 ```
 
 ### Load Paths
-The `--load_path` argument specifys the path to search locations for XPL modules / libraries. XPL scripts might source
+The `--load_path` argument specifies the path to search locations for XPL modules / libraries. XPL scripts might source
 other XPL scripts and it needs to know where to find them. It will search the (possibly multiple) _load paths_ provided
 by the `--load_path` argument when sourcing dependent scripts (see the section on Modules below).
 
 ### Traces
 The `--trace` argument will show a _disassembly_ of the VM-instructions as it runs through the program. This is useful
-for debug purposes but is very slow and interfers with output. Use with care.
+for debug purposes but is very slow and interferes with output. Use with care.
 
 
 ## Language Syntax
@@ -75,7 +75,7 @@ Examples of invalid identifiers are
 - `ab ba`. 
 
 #### Note 
-Some identifers are reserved for language constructs and can not be used in for example variable or function names.
+Some identifiers are reserved for language constructs and can not be used in for example variable or function names.
 Please refer to `report/compiler.lua` for reserved words.
 
 ### Literals
@@ -135,7 +135,7 @@ hashmap = "[" , {keyval} , "]"
 ```
 
 That is a hashmap starts with a opening bracket, then an optional sequence of key value expressions follow (i.e pair of
-expressions seperated by a ":" character) and then it ends with a closing bracket.
+expressions separated by a ":" character) and then it ends with a closing bracket.
 
 Examples of hashmaps:
 - `[1: "Peter", 2: "Sven"]`
@@ -171,11 +171,11 @@ Example of invalid strings are
 
 ##### String implementation
 String are implemented as XPL-arrays with integer values. This is a bit wasteful and complicates, for instance, string
-comparision (we actually have to compare strings element by element). Otoh I can use the same code-generation facilities
+comparison (we actually have to compare strings element by element). Otoh I can use the same code-generation facilities
 that I use for array-literals, which makes it very easy to implement.
 
 #### Null
-A abscense of value literal is provided via null-expression:
+A absence of value literal is provided via null-expression:
 
 ```
 null = "null"
@@ -211,7 +211,7 @@ values) make sense. Trying to multiply a closure with a number will lead to a ru
 
 #### Assignment
 A variable is updated via an _assignment_ statement. For a assignment to be valid the variable first has to be declared
-(semantic check in compiler). The assigment statement takes the following form:
+(semantic check in compiler). The assignment statement takes the following form:
 
 ```
 lhs        = identifier , "[" , expression , "]" , {"[" , expression , "]"} 
@@ -255,8 +255,8 @@ A variable is _always_ local to it's current closure. There are no globally muta
 copy _free variables_ by value.
 
 ### Expressions
-An expression is anything that can be on the rhs of an assignment or operated on by a select set of _statments_ (e.g return,
-print (`@`), read, write, etc...). It includes literals, arithmetical operations on expressions, logical operartions,
+An expression is anything that can be on the rhs of an assignment or operated on by a select set of _statements_ (e.g return,
+print (`@`), read, write, etc...). It includes literals, arithmetical operations on expressions, logical operations,
 file constants, null, array / hashmap indexing, lambda expressions, function calls and module inclusion.
 
 ```
@@ -294,9 +294,9 @@ An expression is not a valid XPL-program on it's own. It needs to be associated 
 perspective one can think of expressions as something that pushes a new value onto the stack of the VM.[^5]
 
 #### Operators
-XPL suppor the following operators
+XPL supports the following operators
 
-| Operator | Precendence | Arity | Comment                    |
+| Operator | Precedence   | Arity | Comment                    |
 |----------|--------------|-------|-----------------------------|
 |    ^     |      1      |   1   | exponent, right associative|
 |    -     |      2      |   1   | additive negation          |
@@ -348,17 +348,17 @@ statement = block
           | assignment
 ```
 
-The control structures will be convered in other sections.
+The control structures will be covered in other sections.
 
 ### Arrays and Hashmaps
-XPL has support for arrays and hasmaps / tables[^6]. You can create them using the array or hashmap literal as described
+XPL has support for arrays and hashmaps / tables[^6]. You can create them using the array or hashmap literal as described
 in the "literals" section. You can also create arrays using the `new` keyword (see expressions):
 
 ```
 "new" "[" , expression , "]" , {"[" , expression , "]"}
 ```
 
-Examples of array and hashtable creation:
+Examples of array and hashmap creation:
 
 ```
 variable a = new [100][100]; # an array consisting of 100 elements, each being an array of 100 elements.
@@ -416,7 +416,7 @@ Mutually recursive functions are defined in one statement as in the following ex
 variable false = 0;
 variable true  = 1;
 function odd (n)
-{
+
     if (n < 0)
     {
         return odd(-n);
@@ -449,7 +449,7 @@ and even(n)
 ```
 
 This syntax is inspired by OCamls `let rec fun1 = ... and fun 2 = ...` syntax[^7]. Here is another example of a function
-statement show how closures captures freevariables of the surrouding environment:
+statement show how closures captures free variables of the surrounding environment:
 ```
 function iterator (start, stop, step = 1)
 {
@@ -506,14 +506,14 @@ section reserved for the formal parameters.
 ### Control Structures
 
 #### If-statement
-The grammar for if statment is as follows:
+The grammar for if statement is as follows:
 
 ```
 ifstmt = "if" , expression , block , [ifrest | "else" , block]
 ifrest = "elseif" , expression , block , [ifrest | 'else' , block]
 ```
 
-Valid if statments:
+Valid if statements:
 ```
 variable x = 20;
 ## without else
@@ -682,7 +682,7 @@ require = "require" , string
 ```
 
 Modules are essentially handled as _thunk_ and executed as soon as they are loaded. Generally a module would return a
-hashtable constisting of functions and values. 
+hashmap consisting of functions and values. 
 
 The search paths for modules are passed to the compiler via the constructor. If no constructor is passed relative paths
 are resolved relative to the CWD.
@@ -729,7 +729,7 @@ Very simple IO constructs are available for communicating with the outside world
 literals pushes a `file` object onto the stack.
 
 
-The statments `write` and `read` operates on files. `write` writes out an object (usually string or array) onto it's
+The statements `write` and `read` operates on files. `write` writes out an object (usually string or array) onto it's
 first (file) argument. `read` reads input into an array (`len(array)` bytes).
 
 
@@ -753,11 +753,11 @@ The side effect statement:
 side_effect = ":" , expression
 ```
 
-evaluates a expression just for it's side effects (value poped from the stack and discarded).
+evaluates a expression just for it's side effects (value pop:ed from the stack and discarded).
 
 
 ## New Features/Changes
-_XPL_ although derived from _Selene_ departs slightly from it's syntax (e.g additional control strutures, lambda
+_XPL_ although derived from _Selene_ departs slightly from it's syntax (e.g additional control structures, lambda
 expressions, break statements) and quite a lot implementation-wise. In this section I'll go through some of these
 differences. 
 
@@ -766,7 +766,7 @@ differences.
 #### More on closures
 As stated earlier lambda expressions is the mechanism we use to create callable closures in _XPL_. A closure consist of
 a _code_ segment and a _data_ segment (see illustration below). The _data_ segment hold all the values that the _code_
-section refers to. Any code we compile will result in a closure. The first closure to be compiled is refered to as the
+section refers to. Any code we compile will result in a closure. The first closure to be compiled is referred to as the
 "top" closure. This is what will start executing when we pass it to the VM.
 
 <p align="center">
@@ -778,7 +778,7 @@ When we _create_ a closure (during run-time) there are several things happening:
 1. A (XPL) array is created large enough to hold all data in the closure data-segment.
 2. All variables that are _free_ inside the closure are copied into the appropriate location in the array.
 3. We replace the data array in the  closure primitive (essentially a closure data structure with code but an unfilled array) 
-   that currenly resides on the top of the stack, by means of the `CLOSURE` instruction.
+   that currently resides on the top of the stack, by means of the `CLOSURE` instruction.
 
 When we _call_ a closure the following happens:
 
@@ -790,8 +790,8 @@ When we _call_ a closure the following happens:
 
 When we _return_ from a closure:
 
-1. We copy-back the data segment to the current closure (it's held as a refernce in the VM).
-2. We restore the calling closure by pop-ing the callstack and overwriting the `data` and `code` pointers in the VM to
+1. We copy-back the data segment to the current closure (it's held as a reference in the VM).
+2. We restore the calling closure by poping the callstack and overwriting the `data` and `code` pointers in the VM to
    point to the caller. Then we restore the `pc` and continue execution.
 
 
@@ -804,7 +804,7 @@ to the stack-frame call method).
 
 #### More on functions
 Functions are just syntactic sugar wrapped around lambda closures, variables and arrays. With the introduction of arrays
-we actually have a mechanism of referensing objects "outside" of the closure. Most importantly we can refer to the
+we actually have a mechanism of referencing objects "outside" of the closure. Most importantly we can refer to the
 closure itself by writing it into an array. 
 
 Let me provide an example to illustrate this. Consider the following program
@@ -849,10 +849,10 @@ fac = fac_[0];
 
 ```
 We actually have a working implementation of `fac`. How did this work? Well, at the time of creation we passed in `fac_`
-to the closure (by value). `fac_` is an array - essentually a pointer - and when we then assign the closure to the first
+to the closure (by value). `fac_` is an array - essentially a pointer - and when we then assign the closure to the first
 element of this array we can actually reference the closure itself _inside_ the closure.
 
-With this insight in-mind creating function statements is just a way of generating the appropritate arrays, variables
+With this insight in-mind creating function statements is just a way of generating the appropriate arrays, variables
 and closures. 
 
 The code generation for the `function` statement does the following:
@@ -880,8 +880,8 @@ generation for a block that we can break-out of a new _break context_ is created
 When we generate code for a `break` statement we check that break context _stack_ is non empty. If not we insert a
 sentinel for a branch instruction and then add the code location to the TOS break context.
 
-When we exit the block that allows break-out we pop the break context stack and then insert a non-coditional branch to
-the the next code location for all code-references in the break context.
+When we exit the block that allows break-out we pop the break context stack and then insert a non-conditional branch to
+the next code location for all code-references in the break context.
 
 
 ### On the Stack VM
@@ -908,7 +908,7 @@ compact by moving out some of the operations (e.g pc manipulation) into a common
 manipulation to be explicitly done at `elseif` branch of the instruction.
 
 ### Additional extension and comments
-_XPL_ has `null` (abscense of value), hashmaps, switch-case statements and strings. The implementation was quite
+_XPL_ has `null` (absence of value), hashmaps, switch-case statements and strings. The implementation was quite
 straight forward. Please refer to example code and the compiler / machine implementation for details. Some details where
 given in the syntax section.
 
@@ -935,8 +935,8 @@ larger change and perhaps warrants a successor language _YPL_.
 
 | Assessment category   | Comments                                              | Score |
 |-----------------------|-------------------------------------------------------|-------|
-| Language Completeness | I've incorporated all exercises with one or two exceptions where they clash with my intended language design. In those places I've added explanations on how to solve it. Abscense of value, hashmaps, switch-case and strings are incorporated into the language. I think closures as a first class object was quite a novel addition. I deduct some points to account for the missing exercise feature that clashed with my intended design | 2.5 |
-| Code Quality & Report | The code needs refactoring and more comments. The overall organisation is ok. Error messages are ok (but not excellent). The report follows the template fairly well. | 1.8 |
+| Language Completeness | I've incorporated all exercises with one or two exceptions where they clash with my intended language design. In those places I've added explanations on how to solve it. Absence of value, hashmaps, switch-case and strings are incorporated into the language. I think closures as a first class object was quite a novel addition. I deduct some points to account for the missing exercise feature that clashed with my intended design | 2.5 |
+| Code Quality & Report | The code needs refactoring and more comments. The overall organization is ok. Error messages are ok (but not excellent). The report follows the template fairly well. | 1.8 |
 | Originality & Scope   | I think the implementation is quite distinct from Selene, the syntax has extensions to Selene language but the base is similar. The VM is quite different from the Selene implementation. XPL has enough power to solve real-world problems but execution is quite slow. | 2.2 |
 
 ## Footnotes
