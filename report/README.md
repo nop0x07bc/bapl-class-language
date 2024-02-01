@@ -29,8 +29,15 @@ To run a XPL-script you navigate to the root of this repository and then execute
 
 For example to run the `report/mandelbrot.xpl` script you would write
 ```bash
-./run --load_path "report" --load report/examples/mandelbrot.xpl > mandelbrot.ppm
+./run report/interpreter.lua  --load_path "report/examples" --load report/examples/mandelbrot.xpl > mandelbrot.ppm
 ```
+Other scripts to explore:
+```bash
+./run report/interpreter.lua  --load_path "report/examples" --load report/examples/rec.xpl
+./run report/interpreter.lua  --load_path "report/examples" --load report/examples/it.xpl
+./run report/interpreter.lua  --load_path "report/examples" --load report/examples/test.xpl
+```
+
 
 #### Running tests
 There are several tests defined in `report/project_tests.lua` you can run them using the following script.
