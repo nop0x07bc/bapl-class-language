@@ -1,7 +1,7 @@
 # Final Project Report: eXperimental Programming Language (XPL)
 
 <p align="center">
-    <img width="640" height="480" src="mandelbrot.png">
+    <img width="640" height="480" src="assets/mandelbrot.png">
 </p>
 
 The name for XPL is inspired by the _X-plane_ series of experimental aircrafts. Just as its aerodynamical "brothers"
@@ -166,6 +166,13 @@ Example of invalid strings are
 String are implemented as XPL-arrays with integer values. This is a bit wasteful and complicates, for instance, string
 comparision (we actually have to compare strings element by element). Otoh I can use the same code-generation facilities
 that I use for array-literals, which makes it very easy to implement.
+
+#### Null
+A abscense of value literal is provided via null-expression:
+
+```
+null = "null"
+```
 
 ### Variables
 Variables in XPL are symbolic names for values (closures, arrays, hashmaps, strings, files, null and numbers). A variable is
@@ -710,10 +717,154 @@ variable #{ in line comment #} x = 10;
 ```
 ### Other
 
-#### Return and break
+#### IO
+Very simple IO constructs are available for communicating with the outside world. The `stdout` , `stdin`, `stderr`
+literals pushes a `file` object onto the stack.
+
+
+The statments `write` and `read` operates on files. `write` writes out an object (usually string or array) onto it's
+first (file) argument. `read` reads input into an array (`len(array)` bytes).
+
+
+#### Length
+The `len` operator returns the size of an array.
+
+
+#### Print 
+The print statement:
+
+```
+print = "@" , expression
+```
+
+Prints the contents to stdout. This is mostly used for debugging purposes.
+
+
+#### Side effect
+The side effect statement:
+```
+side_effect = ":" , expression
+```
+
+evaluates a expression just for it's side effects (value poped from the stack and discarded).
 
 
 ## New Features/Changes
+_XPL_ although derived from _Selene_ departs slightly from it's syntax (e.g additional control strutures, lambda
+expressions, break statements) and quite a lot implementation-wise. In this section I'll go through some of these
+differences. 
+
+### Lambda expressions and functions
+
+#### More on closures
+As stated earlier lambda expressions is the mechanism we use to create callable closures in _XPL_. A closure consist of
+a _code_ segment and a _data_ segment (see illustration below). The _data_ segment hold all the values that the _code_
+section refers to. Any code we compile will result in a closure. The first closure to be compiled is refered to as the
+"top" closure. This is what will start executing when we pass it to the VM.
+
+<p align="center">
+    <img width="640" height="480" src="assets/closure.png">
+</p>
+
+When we _create_ a closure (during run-time) there are several things happening:
+
+1. A (XPL) array is created large enought o hold hold all data in the closure data-segment.
+2. All variables that are _free_ inside the closure are copied into the appropriate location in the array.
+3. We replace the data array in the  closure primitive (essentially a closure data structure with code but an unfilled array) 
+   that currenly resides on the top of the stack, by means of the `CLOSURE` instruction.
+
+When we _call_ a closure the following happens:
+
+1. The arguments associated to the formal parameters of the closure are push onto the stack.
+2. We save the state of the current running closure by pushing it on a special _call_ stack (not the data stack). This
+   state includes `data`, `code` segment as well as the `pc` and a few more meta-data.
+3. Control is passed to the closure by setting the `data` and `code` pointers of the VM to the to-be-called closures segments, and
+   setting the `pc` to `1` - the first instruction of the closure code-segment.
+
+When we _return_ from a closure:
+
+1. We copy-back the data segment to the current closure (it's held as a refernce in the VM).
+2. We restore the calling closure by pop-ing the callstack and overwriting the `data` and `code` pointers in the VM to
+   point to the caller. Then we restore the `pc` and continue execution.
+
+
+*Note 1:* Keeping a separate stack for closure-calls simplified the implementation a lot. I don't need to construct
+frames inside the data-stack.
+
+*Note 2:* The copying closure parameters back and forth through calls gives us a overhead on the call function (compared
+to the stack-frame call method). 
+
+
+#### More on functions
+Functions are just syntactic sugar wrapped around lambda closures, variables and arrays. With the introduction of arrays
+we actually have a mechanism of referensing objects "outside" of the closure. Most importantly we can refer to the
+closure itself by writing it into an array. 
+
+Let me provide an example to illustrate this. Consider the following program
+```
+variable fac = lambda (n)
+{
+    if (n <= 0)
+    {
+        return 1;
+    }
+    else
+    {
+        return fac(n - 1) * n;
+    }
+}
+
+```
+This program will fail to compile, since fac is not know at the moment the lambda is being constructed. We cannot refer
+to `fac` inside the closure. Even if we try to remedy this by first defining the variable `fac` as `null` and then
+setting it to the lambda expression it will fail (with the current implementation of the compiler) since the _value_ of
+the _free_ variable `fac` that will be copied into the closure is at the time of copyign `null`!
+
+However if we transform the above expression as such
+
+```
+variable fac_ = {0}; # create an array of 1 element.
+
+fac_[1] = lambda (n)
+{
+    if (n <= 0)
+    {
+        return 1;
+    }
+    else
+    {
+        return fac_[1](n - 1) * n;
+    }
+};
+fac = fac_[0];
+
+@ fac(5); # prints 120
+
+```
+We actually have a working implementation of `fac`. How did this work? Well, at the time of creation we passed in `fac_`
+to the closure (by value). `fac_` is an array - essentually a pointer - and when we then assign the closure to the first
+element of this array we can actually reference the closure itself _inside_ the closure.
+
+With this insight in-mind creating function statements is just a way of generating the appropritate arrays, variables
+and closures. 
+
+The code generation for the `function` statement does the following:
+
+1. Creates a new AST node containing a variable declaration  with a unique non-parseable (i.e cannot clash with user names) 
+   variable name to hold the 1-element array which will store the closure reference. E.g for a function called `fun` and
+   array called `.fun` will be created.
+2. Creates a new lambda-node which takes the function block as it's block, however all non-shadowed names `fun` are
+   replaced with a node containing the equivalent to `.fun[1]`. (e.g `fun(n - 1) -> .fun[1](n - 1)`)
+3. Creates a node with a variable declaration with the function name (e.g `fun`). 
+4. Generates code for all new nodes.
+
+
+
+
+
+This approach also extends to the `function ... and ... [and ...]` syntax quite easily (we just do this generation for
+several functions at once).
+
 
 In this section, describe the new features or changes that you have added to the programming language. This should include:
 
@@ -722,21 +873,25 @@ In this section, describe the new features or changes that you have added to the
 * Any trade-offs or limitations you are aware of
 
 ## Future
+Future improvements will include a `C++` implementation of the compiler and stack-machine. The major blocker for this
+right now is the way _closures_ are constructed by the compiler. 
 
-In this section, discuss the future of your language / DSL, such as deployability (if applicable), features, etc.
+Currently a closure is just another table with fields for data and code (plus some meta data). It's inserted into the
+code-structure of the code-segment of the surrounding closure. I would rather build up an index of closures and just
+push a tagged data type with a reference to a closure around.
 
-* What would be needed to get this project ready for production?
-* How would you extend this project to do something more? Are there other features you’d like? How would you go about adding them?
+
+
+Another feature I would like to add is a
+[Hindley-Milner](https://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system) like type system. But this is a
+larger change and perhaps warrants a successor language _YPL_.
 
 ## Self assessment
 
 * Self assessment of your project: for each criteria described on the final project specs, choose a score (1, 2, 3) and explain your reason for the score in 1-2 sentences.
 * Have you gone beyond the base requirements? How so?
 
-## References
-
-List any references used in the development of your language besides this courses, including any books, papers, or online resources.
-
+## Footnotes
 
 [^1]: In fact there might be bugs hidden deep inside that cause the computational equivalent of a complete "loss of control" (LOC). 
 [^2]: As developed during the course of the [BaPL](https://classpert.com/classpertx/courses/building-a-programming-language/cohort) course. 
